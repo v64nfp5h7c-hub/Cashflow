@@ -1,593 +1,837 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <title>Cash Flow</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&display=swap" rel="stylesheet"/>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-  body{background:#05080f;color:#e2e8f0;font-family:system-ui,-apple-system,sans-serif;overscroll-behavior:none;}
-  input,select,button{font-family:system-ui,-apple-system,sans-serif;}
-  input[type=range]{width:100%;accent-color:#3b82f6;}
-  ::-webkit-scrollbar{display:none;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:#000;color:#fff;font-family:system-ui,-apple-system,sans-serif;overflow-x:hidden;}
+input,select,button,textarea{font-family:system-ui,-apple-system,sans-serif;}
+input[type=range]{width:100%;accent-color:#d4a017;}
+::-webkit-scrollbar{display:none;}
+.app{max-width:500px;margin:0 auto;min-height:100vh;padding-bottom:100px;}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;background:#000;border-top:2px solid #d4a017;padding:10px 20px 28px;z-index:100;display:flex;justify-content:space-around;}
+.nav button{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 8px;}
+.nav .ni{font-size:20px;filter:grayscale(1) opacity(0.3);}
+.nav .nl{font-size:9px;font-weight:700;color:#333;letter-spacing:1px;}
+.nav button.active .ni{filter:none;}
+.nav button.active .nl{color:#d4a017;}
+.nav .dot{width:5px;height:5px;border-radius:50%;background:#d4a017;}
+.section{padding:0 20px;}
+.lbl{font-size:9px;letter-spacing:4px;color:#444;font-weight:700;text-transform:uppercase;margin-bottom:8px;display:block;}
+.card{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:16px;padding:18px 20px;margin-bottom:12px;}
+.inp{width:100%;background:#0a0a0a;border:2px solid #222;border-radius:14px;padding:16px 18px;color:#fff;font-size:16px;outline:none;box-sizing:border-box;margin-bottom:10px;}
+.inp:focus{border-color:#d4a017;}
+select.inp option{background:#0a0a0a;color:#fff;}
+.btn-blue{width:100%;background:#d4a017;border:none;border-radius:14px;color:#000;padding:16px;cursor:pointer;font-size:15px;font-weight:900;letter-spacing:1px;}
+.btn-green{width:100%;background:#000;border:2px solid #00ff88;border-radius:14px;color:#00ff88;padding:16px;cursor:pointer;font-size:15px;font-weight:900;letter-spacing:1px;}
+.btn-purple{width:100%;background:#000;border:2px solid #d4a017;border-radius:14px;color:#d4a017;padding:16px;cursor:pointer;font-size:15px;font-weight:900;letter-spacing:1px;}
+.ptrack{background:#111;border-radius:99px;height:4px;overflow:hidden;margin:4px 0;}
+.pfill{height:100%;border-radius:99px;transition:width 0.4s;}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);color:#000;padding:12px 24px;border-radius:14px;font-size:14px;font-weight:900;z-index:999;white-space:nowrap;background:#d4a017;}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:998;display:flex;align-items:center;justify-content:center;padding:0 24px;}
+.modal{background:#0a0a0a;border:2px solid #d4a017;border-radius:20px;padding:28px 24px;width:100%;max-width:400px;}
+.gothic{font-family:'UnifrakturMaguntia',cursive;}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
 const {useState,useEffect}=React;
-
-const SUPABASE_URL=“https://acjwuqishnhievprpvqe.supabase.co”;
-const SUPABASE_KEY=“eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjand1cWlzaG5oaWV2cHJwdnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNjkwMjksImV4cCI6MjA5Mzk0NTAyOX0.P-O_h5EQcmfv5OEeXV7Sk9LPGk8CbKI3mKjB7NJGhi8”;
-
-const H={“Content-Type”:“application/json”,“apikey”:SUPABASE_KEY,“Authorization”:“Bearer “+SUPABASE_KEY};
-const BASE=SUPABASE_URL+”/rest/v1/”;
-
-const db={
-get:async(t,f)=>{const r=await fetch(BASE+t+”?”+(f||””)+”&order=created_at.asc”,{headers:H});return r.json();},
-post:async(t,d)=>{const r=await fetch(BASE+t,{method:“POST”,headers:{…H,“Prefer”:“return=representation”},body:JSON.stringify(d)});return r.json();},
-patch:async(t,id,d)=>{const r=await fetch(BASE+t+”?id=eq.”+id,{method:“PATCH”,headers:{…H,“Prefer”:“return=representation”},body:JSON.stringify(d)});return r.json();},
-upsert:async(t,d)=>{const r=await fetch(BASE+t+”?on_conflict=key”,{method:“POST”,headers:{…H,“Prefer”:“resolution=merge-duplicates,return=representation”},body:JSON.stringify(d)});return r.json();},
-del:async(t,id)=>{await fetch(BASE+t+”?id=eq.”+id,{method:“DELETE”,headers:H});},
-};
-
-const fmt=(n)=>n.toLocaleString(“en-US”,{style:“currency”,currency:“USD”});
-const fmtS=(n)=>”$”+Math.abs(n).toFixed(0);
-
-const CAT_COLORS={Bills:”#ef4444”,Subscriptions:”#8b5cf6”,Health:”#06b6d4”,Food:”#f97316”,Coffee:”#d97706”,Gas:”#eab308”,“Debt Repaid”:”#ec4899”,Business:”#3b82f6”,Savings:”#22c55e”,Loan:”#f43f5e”,Other:”#64748b”};
-const CAT_ICONS={Bills:“📱”,Subscriptions:“🔄”,Health:“💊”,Food:“🍔”,Coffee:“☕”,Gas:“⛽”,“Debt Repaid”:“🤝”,Business:“💼”,Savings:“💰”,Loan:“⚠️”,Other:“📦”};
-const CATS=Object.keys(CAT_ICONS);
-const FREQ={“one-time”:“One-time”,“weekly”:“Weekly”,“biweekly”:“Bi-weekly”,“monthly”:“Monthly”};
-const WEEKLY_GOAL=1200,WEEKLY_MIN=1000,WEEKLY_PIP=700,DAILY_GOAL=240;
-const WORK_DAYS=[“Thu”,“Fri”,“Sat”,“Sun”,“Mon”];
-const PRODUCTS=[
-{id:“directv”,label:“DirecTV”,amount:51,category:“TV”},
-{id:“directv_s”,label:“DirecTV Stream”,amount:60,category:“TV”},
-{id:“directv_c”,label:“DirecTV Choice+”,amount:80,category:“TV”},
-{id:“add_box”,label:“Additional Box”,amount:10,category:“TV”},
-{id:“int_25”,label:“Internet 25M”,amount:40,category:“Internet”},
-{id:“int_100”,label:“Internet 50-100M”,amount:60,category:“Internet”},
-{id:“int_300”,label:“Internet 300M”,amount:125,category:“Internet”},
-{id:“int_500”,label:“Internet 500M”,amount:130,category:“Internet”},
-{id:“int_1000”,label:“Internet 1000M+”,amount:165,category:“Internet”},
-{id:“google_fiber”,label:“Google Fiber”,amount:140,category:“Internet”},
-{id:“upgrade”,label:“Upgrade”,amount:20,category:“Wireless”},
-{id:“tablet”,label:“Tablet”,amount:15,category:“Wireless”},
-{id:“wearable”,label:“Wearables”,amount:15,category:“Wireless”},
+const fmt=(n)=>(+n||0).toLocaleString("en-US",{style:"currency",currency:"USD"});
+const fmtS=(n)=>"$"+Math.abs(+n||0).toFixed(0);
+const today=new Date();
+const CC={Bills:"#ef4444",Subscriptions:"#8b5cf6",Health:"#06b6d4",Food:"#f97316",Coffee:"#d97706",Gas:"#d4a017","Debt Repaid":"#ec4899",Business:"#d4a017",Savings:"#22c55e",Loan:"#f43f5e",Other:"#555"};
+const CI={Bills:"📱",Subscriptions:"🔄",Health:"💊",Food:"🍔",Coffee:"☕",Gas:"⛽","Debt Repaid":"🤝",Business:"💼",Savings:"💰",Loan:"⚠️",Other:"📦"};
+const CATS=Object.keys(CI);
+const FR={"one-time":"One-time","weekly":"Weekly","biweekly":"Bi-weekly","monthly":"Monthly"};
+const WGOAL=1200,WMIN=1000,WPIP=700,DGOAL=240;
+const WDAYS=["Thu","Fri","Sat","Sun","Mon"];
+const QUICK=[{label:"Gas",cat:"Gas",icon:"⛽"},{label:"Food",cat:"Food",icon:"🍔"},{label:"Coffee",cat:"Coffee",icon:"☕"},{label:"Groceries",cat:"Food",icon:"🛒"},{label:"Transfer",cat:"Savings",icon:"💰"}];
+const PRODS=[
+  {id:"directv",label:"DirecTV",amount:51,cat:"TV"},
+  {id:"stream",label:"DirecTV Stream",amount:60,cat:"TV"},
+  {id:"choiceplus",label:"DirecTV Choice+",amount:80,cat:"TV"},
+  {id:"addbox",label:"Additional Box",amount:10,cat:"TV"},
+  {id:"int25",label:"Internet 25M",amount:40,cat:"Internet"},
+  {id:"int100",label:"Internet 50-100M",amount:60,cat:"Internet"},
+  {id:"int300",label:"Internet 300M",amount:125,cat:"Internet"},
+  {id:"int500",label:"Internet 500M",amount:130,cat:"Internet"},
+  {id:"int1000",label:"Internet 1000M+",amount:165,cat:"Internet"},
+  {id:"upgrade",label:"Upgrade",amount:20,cat:"Wireless"},
+  {id:"tablet",label:"Tablet",amount:15,cat:"Wireless"},
+  {id:"wearable",label:"Wearables",amount:15,cat:"Wireless"},
 ];
 const DEBTS=[
-{id:1,label:“Credence Resource”,amount:371,source:“Credit card”,color:”#22c55e”,settlement:0.55},
-{id:2,label:“NCA”,amount:987,source:“Credit card”,color:”#22c55e”,settlement:0.55},
-{id:3,label:“Credit Control LLC”,amount:1120,source:“Credit card”,color:”#a855f7”,settlement:0.55},
-{id:4,label:“Natl Credit Systems”,amount:2823,source:“Apartment eviction”,color:”#eab308”,settlement:0.55},
-{id:5,label:“Natl Credit Systems”,amount:6027,source:“Apartment eviction”,color:”#eab308”,settlement:0.55},
-{id:6,label:“Hunter Warfield”,amount:7898,source:“Honda repo”,color:”#f97316”,settlement:0.45},
-{id:7,label:“Cavalry Portfolio”,amount:11525,source:“Truck repo”,color:”#ef4444”,settlement:0.45},
+  {id:1,label:"Credence Resource",amount:371,source:"Credit card",color:"#00ff88",s:0.55},
+  {id:2,label:"NCA",amount:987,source:"Credit card",color:"#00ff88",s:0.55},
+  {id:3,label:"Credit Control LLC",amount:1120,source:"Credit card",color:"#a855f7",s:0.55},
+  {id:4,label:"Natl Credit Systems",amount:2823,source:"Apartment eviction",color:"#ffcc00",s:0.55},
+  {id:5,label:"Natl Credit Systems",amount:6027,source:"Apartment eviction",color:"#ffcc00",s:0.55},
+  {id:6,label:"Hunter Warfield",amount:7898,source:"Honda repo",color:"#f97316",s:0.45},
+  {id:7,label:"Cavalry Portfolio",amount:11525,source:"Truck repo",color:"#ff2222",s:0.45},
 ];
-const TABS=[{id:“Home”,icon:“⌂”,label:“Home”},{id:“Bills”,icon:“📅”,label:“Bills”},{id:“Sales”,icon:“💰”,label:“Sales”},{id:“Car”,icon:“🚗”,label:“Car”},{id:“Debt”,icon:“💳”,label:“Debt”},{id:“Add”,icon:“＋”,label:“Add”}];
-const IS={width:“100%”,background:”#0a0f1a”,border:“1.5px solid #1e293b”,borderRadius:14,padding:“16px 18px”,color:”#e2e8f0”,fontSize:16,outline:“none”,boxSizing:“border-box”};
-
-function DonutChart({innerData,outerData,centerLabel,centerSub,size=240}){
-const r1=78,r2=95,cx=size/2,cy=size/2;
-function slices(data,r){
-const total=data.reduce((s,d)=>s+d.value,0);
-if(!total)return[{path:“M”+cx+”,”+(cy-r)+” A”+r+”,”+r+”,0,1,1,”+(cx-0.001)+”,”+(cy-r)+” Z”,color:”#1e293b”}];
-let angle=-Math.PI/2;const paths=[];
-data.forEach(d=>{
-if(d.value<=0)return;
-const sweep=(d.value/total)*2*Math.PI;
-const x1=cx+r*Math.cos(angle),y1=cy+r*Math.sin(angle);
-const x2=cx+r*Math.cos(angle+sweep),y2=cy+r*Math.sin(angle+sweep);
-const large=sweep>Math.PI?1:0;
-paths.push({path:“M”+cx+”,”+cy+” L”+x1+”,”+y1+” A”+r+”,”+r+”,0,”+large+”,1,”+x2+”,”+y2+” Z”,color:d.color});
-angle+=sweep;
-});
-return paths;
+const NAVS=[{id:"Home",icon:"⌂",label:"Home"},{id:"Bills",icon:"📅",label:"Bills"},{id:"Sales",icon:"💰",label:"Sales"},{id:"Car",icon:"🚗",label:"Car"},{id:"Debt",icon:"💳",label:"Debt"}];
+function daysUntil(dueDay){if(!dueDay||dueDay===0)return 999;const t=new Date();t.setDate(dueDay);if(t<new Date())t.setMonth(t.getMonth()+1);return Math.ceil((t-new Date())/86400000);}
+function urgColor(d){return d===0?"#ff2222":d<=3?"#ffcc00":"#00ff88";}
+function DonutChart({inner,outer,label,sub}){
+  const S=220,r1=70,r2=86,cx=110,cy=110;
+  function arcs(data,r){
+    const tot=data.reduce((s,d)=>s+d.v,0);
+    if(!tot)return[{d:"M"+cx+","+(cy-r)+" A"+r+","+r+",0,1,1,"+(cx-.001)+","+(cy-r)+" Z",c:"#222"}];
+    let a=-Math.PI/2,ps=[];
+    data.forEach(d=>{
+      if(d.v<=0)return;
+      const sw=(d.v/tot)*2*Math.PI,x1=cx+r*Math.cos(a),y1=cy+r*Math.sin(a),x2=cx+r*Math.cos(a+sw),y2=cy+r*Math.sin(a+sw),lg=sw>Math.PI?1:0;
+      ps.push({d:"M"+cx+","+cy+" L"+x1+","+y1+" A"+r+","+r+",0,"+lg+",1,"+x2+","+y2+" Z",c:d.c});
+      a+=sw;
+    });
+    return ps;
+  }
+  const inn=arcs(inner,r1),out=arcs(outer,r2);
+  return(
+    <svg width={S} height={S} style={{display:"block",margin:"0 auto"}}>
+      {out.map((s,i)=><path key={"o"+i} d={s.d} fill={s.c} opacity={0.3} stroke="#000" strokeWidth={1.5}/>)}
+      {inn.map((s,i)=><path key={"i"+i} d={s.d} fill={s.c} opacity={0.9} stroke="#000" strokeWidth={1.5}/>)}
+      <circle cx={cx} cy={cy} r={48} fill="#000"/>
+      <text x={cx} y={cy-6} textAnchor="middle" fill="#fff" fontSize={19} fontWeight={800} fontFamily="system-ui">{label}</text>
+      <text x={cx} y={cy+12} textAnchor="middle" fill="#444" fontSize={10} fontFamily="system-ui">remaining</text>
+      {sub&&<text x={cx} y={cy+26} textAnchor="middle" fill="#333" fontSize={9} fontFamily="system-ui">{sub}</text>}
+    </svg>
+  );
 }
-const inner=slices(innerData,r1),outer=slices(outerData,r2);
-return React.createElement(“svg”,{width:size,height:size,style:{display:“block”,margin:“0 auto”}},
-outer.map((s,i)=>React.createElement(“path”,{key:“o”+i,d:s.path,fill:s.color,opacity:0.35,stroke:”#05080f”,strokeWidth:1.5})),
-inner.map((s,i)=>React.createElement(“path”,{key:“i”+i,d:s.path,fill:s.color,opacity:0.9,stroke:”#05080f”,strokeWidth:1.5})),
-React.createElement(“circle”,{cx,cy,r:52,fill:”#05080f”}),
-React.createElement(“text”,{x:cx,y:cy-10,textAnchor:“middle”,fill:”#f8fafc”,fontSize:22,fontWeight:800,fontFamily:“system-ui”},centerLabel),
-React.createElement(“text”,{x:cx,y:cy+12,textAnchor:“middle”,fill:”#475569”,fontSize:11,fontFamily:“system-ui”},“remaining”),
-centerSub&&React.createElement(“text”,{x:cx,y:cy+28,textAnchor:“middle”,fill:”#334155”,fontSize:10,fontFamily:“system-ui”},centerSub)
-);
-}
-
 function App(){
-const [tab,setTab]=useState(“Home”);
-const [dbReady,setDbReady]=useState(false);
-const [paycheck,setPaycheck]=useState(””);
-const [editingPaycheck,setEditingPaycheck]=useState(true);
-const [paycheckInput,setPaycheckInput]=useState(””);
-const [paycheckHistory,setPaycheckHistory]=useState([]);
-const [showNewPaycheckModal,setShowNewPaycheckModal]=useState(false);
-const [newPaycheckInput,setNewPaycheckInput]=useState(””);
-const [expenses,setExpenses]=useState([]);
-const [newLabel,setNewLabel]=useState(””);
-const [newAmount,setNewAmount]=useState(””);
-const [newCat,setNewCat]=useState(“Food”);
-const [newFreq,setNewFreq]=useState(“one-time”);
-const [newDueDay,setNewDueDay]=useState(””);
-const [nextId,setNextId]=useState(Date.now());
-const [toast,setToast]=useState(null);
-const [bills,setBills]=useState([]);
-const [openGroups,setOpenGroups]=useState({});
-const [addingBill,setAddingBill]=useState(false);
-const [billLabel,setBillLabel]=useState(””);
-const [billAmount,setBillAmount]=useState(””);
-const [billCat,setBillCat]=useState(“Bills”);
-const [billDueDay,setBillDueDay]=useState(””);
-const [billFreq,setBillFreq]=useState(“monthly”);
-const [sales,setSales]=useState([]);
-const [selDay,setSelDay]=useState(“Thu”);
-const [showMayBonus,setShowMayBonus]=useState(true);
-const [builder,setBuilder]=useState([]);
-const [addingType,setAddingType]=useState(“line”);
-const [linePlan,setLinePlan]=useState(“premium”);
-const [lineNextUp,setLineNextUp]=useState(false);
-const [otherProduct,setOtherProduct]=useState(“directv”);
-const [rejectedSales,setRejectedSales]=useState(0);
-const [totalAttempts,setTotalAttempts]=useState(0);
-const [carSaved,setCarSaved]=useState(2700);
-const [carTarget,setCarTarget]=useState(7000);
-const [weeklyCarSavings,setWeeklyCarSavings]=useState(500);
-const [carWhatIf,setCarWhatIf]=useState(500);
-const [editingCar,setEditingCar]=useState(null);
-const [carInput,setCarInput]=useState(””);
-const [settledDebts,setSettledDebts]=useState({});
+  const [tab,setTab]=useState("Home");
+  const [paycheck,setPaycheck]=useState(0);
+  const [editPC,setEditPC]=useState(false);
+  const [pcInput,setPcInput]=useState("");
+  const [showNewPC,setShowNewPC]=useState(false);
+  const [newPCInput,setNewPCInput]=useState("");
+  const [newPCDate,setNewPCDate]=useState(new Date().toISOString().split("T")[0]);
+  const [history,setHistory]=useState([]);
+  const [bills,setBills]=useState([]);
+  const [expenses,setExpenses]=useState([]);
+  const [openG,setOpenG]=useState({});
+  const [showAddForm,setShowAddForm]=useState(false);
+  const [fLabel,setFLabel]=useState("");
+  const [fAmt,setFAmt]=useState("");
+  const [fFreq,setFFreq]=useState("one-time");
+  const [fCat,setFCat]=useState("Food");
+  const [fDue,setFDue]=useState("");
+  const [editingBill,setEditingBill]=useState(null);
+  const [editBillData,setEditBillData]=useState({});
+  const [quickAmt,setQuickAmt]=useState("");
+  const [activeQuick,setActiveQuick]=useState(null);
+  const [sales,setSales]=useState({total:0,daily:{Thu:0,Fri:0,Sat:0,Sun:0,Mon:0},rejects:0,attempts:0,log:[]});
+  const [selDay,setSelDay]=useState("Thu");
+  const [mayBonus,setMayBonus]=useState(true);
+  const [builder,setBuilder]=useState([]);
+  const [addType,setAddType]=useState("line");
+  const [plan,setPlan]=useState("premium");
+  const [nextUp,setNextUp]=useState(false);
+  const [otherProd,setOtherProd]=useState("directv");
+  const [monthlySales,setMonthlySales]=useState(0);
+  const [carSaved,setCarSaved]=useState(3200);
+  const [carTarget,setCarTarget]=useState(7000);
+  const [carWeekly,setCarWeekly]=useState(500);
+  const [carWhatIf,setCarWhatIf]=useState(500);
+  const [editCar,setEditCar]=useState(null);
+  const [carIn,setCarIn]=useState("");
+  const [settled,setSettled]=useState({});
+  const [toast,setToast]=useState(null);
+  const [confirmDel,setConfirmDel]=useState(null);
+  const [loaded,setLoaded]=useState(false);
 
-useEffect(()=>{
-const load=async()=>{
-try{
-const sets=await db.get(“settings”);
-if(Array.isArray(sets)){
-sets.forEach(s=>{
-if(s.key===“paycheck”&&s.value&&s.value.val){setPaycheck(s.value.val);setEditingPaycheck(false);}
-if(s.key===“car_saved”&&s.value)setCarSaved(s.value.val||2700);
-if(s.key===“car_target”&&s.value)setCarTarget(s.value.val||7000);
-if(s.key===“car_weekly”&&s.value)setWeeklyCarSavings(s.value.val||500);
-if(s.key===“rejected”&&s.value)setRejectedSales(s.value.val||0);
-if(s.key===“attempts”&&s.value)setTotalAttempts(s.value.val||0);
-});
-}
-const bd=await db.get(“bills”);
-if(Array.isArray(bd)&&bd.length>0)setBills(bd.map(b=>({id:b.id,label:b.label,amount:b.amount,category:b.category,dueDay:b.due_day,freq:b.freq,paid:b.paid})));
-const ed=await db.get(“expenses”);
-if(Array.isArray(ed)&&ed.length>0)setExpenses(ed.map(e=>({id:e.id,label:e.label,amount:e.amount,category:e.category,freq:e.freq})));
-const sd=await db.get(“sales”);
-if(Array.isArray(sd)&&sd.length>0)setSales(sd.map(s=>({id:s.id,day:s.day,total:s.total,items:s.items||[]})));
-const wd=await db.get(“week_history”);
-if(Array.isArray(wd)&&wd.length>0)setPaycheckHistory(wd.map(w=>({week:w.week_label,date:w.week_date,paycheck:w.paycheck_amount,spent:w.total_spent,salesTotal:w.sales_total})));
-}catch(e){console.log(“Load error”,e);}
-setDbReady(true);
-};
-load();
-},[]);
+  useEffect(()=>{
+    try{
+      const keys=["paycheck","history","bills","expenses","sales","monthlySales","carSaved","carTarget","carWeekly","settled","mayBonus"];
+      const saved={};
+      keys.forEach(k=>{const v=localStorage.getItem("cf_"+k);if(v)saved[k]=JSON.parse(v);});
+      if(saved.paycheck!==undefined)setPaycheck(saved.paycheck);
+      if(saved.history)setHistory(saved.history);
+      if(saved.bills)setBills(saved.bills);
+      if(saved.expenses)setExpenses(saved.expenses);
+      if(saved.sales)setSales(saved.sales);
+      if(saved.monthlySales!==undefined)setMonthlySales(saved.monthlySales);
+      if(saved.carSaved!==undefined)setCarSaved(saved.carSaved);
+      if(saved.carTarget!==undefined)setCarTarget(saved.carTarget);
+      if(saved.carWeekly!==undefined)setCarWeekly(saved.carWeekly);
+      if(saved.settled)setSettled(saved.settled);
+      if(saved.mayBonus!==undefined)setMayBonus(saved.mayBonus);
+    }catch(e){}
+    setLoaded(true);
+  },[]);
 
-const saveSetting=async(key,val)=>{try{await db.upsert(“settings”,{key,value:{val}});}catch(e){}};
-const showToast=(msg,color)=>{setToast({msg,color:color||”#22c55e”});setTimeout(()=>setToast(null),2500);};
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_paycheck",JSON.stringify(paycheck));}catch(e){};},[paycheck,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_history",JSON.stringify(history));}catch(e){};},[history,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_bills",JSON.stringify(bills));}catch(e){};},[bills,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_expenses",JSON.stringify(expenses));}catch(e){};},[expenses,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_sales",JSON.stringify(sales));}catch(e){};},[sales,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_monthlySales",JSON.stringify(monthlySales));}catch(e){};},[monthlySales,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_carSaved",JSON.stringify(carSaved));}catch(e){};},[carSaved,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_carTarget",JSON.stringify(carTarget));}catch(e){};},[carTarget,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_carWeekly",JSON.stringify(carWeekly));}catch(e){};},[carWeekly,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_settled",JSON.stringify(settled));}catch(e){};},[settled,loaded]);
+  useEffect(()=>{if(!loaded)return;try{localStorage.setItem("cf_mayBonus",JSON.stringify(mayBonus));}catch(e){};},[mayBonus,loaded]);
 
-const paycheckAmt=parseFloat(paycheck)||0;
-const paidBillsTotal=bills.filter(b=>b.paid).reduce((s,b)=>s+b.amount,0);
-const expensesTotal=expenses.reduce((s,e)=>s+e.amount,0);
-const totalSpent=paidBillsTotal+expensesTotal;
-const remaining=paycheckAmt-totalSpent;
-const pct=paycheckAmt>0?Math.min((totalSpent/paycheckAmt)*100,100):0;
-const sc=remaining<0?”#ef4444”:remaining<paycheckAmt*0.2?”#eab308”:”#22c55e”;
-const allItems=[…bills.filter(b=>b.paid),…expenses];
-const catTotals=CATS.map(cat=>({cat,spent:allItems.filter(e=>e.category===cat).reduce((s,e)=>s+e.amount,0),total:bills.filter(b=>b.category===cat).reduce((s,b)=>s+b.amount,0)+expenses.filter(e=>e.category===cat).reduce((s,e)=>s+e.amount,0)})).filter(c=>c.total>0||c.spent>0);
-const innerRing=catTotals.filter(c=>c.spent>0).map(c=>({label:c.cat,value:c.spent,color:CAT_COLORS[c.cat]}));
-const outerRing=catTotals.filter(c=>c.total>0).map(c=>({label:c.cat,value:c.total,color:CAT_COLORS[c.cat]}));
-const billGroups=Object.entries(bills.reduce((g,b)=>{const key=b.freq===“weekly”?“Weekly”:b.dueDay?“Due “+b.dueDay+“th”:“No Due Date”;if(!g[key])g[key]=[];g[key].push(b);return g;},{})).sort(([a],[b])=>(parseInt(a.replace(/\D/g,””))||999)-(parseInt(b.replace(/\D/g,””))||999));
-const weeklyCommission=sales.reduce((s,sale)=>s+sale.total,0);
-const weeklyPct=Math.min((weeklyCommission/WEEKLY_GOAL)*100,100);
-const weeklyColor=weeklyCommission>=WEEKLY_GOAL?”#22c55e”:weeklyCommission>=WEEKLY_MIN?”#eab308”:”#ef4444”;
-const dailyTotals=WORK_DAYS.map(day=>({day,total:sales.filter(s=>s.day===day).reduce((s,sale)=>s+sale.total,0)}));
-const lineTotal=50+(linePlan===“premium”?11:linePlan===“extra”?8:0)+(lineNextUp?10:0)+(showMayBonus?35:0);
-const builderTotal=builder.reduce((s,i)=>s+i.amount,0);
-const monthlyCommission=paycheckHistory.reduce((s,w)=>s+w.salesTotal,0)+weeklyCommission;
-const rejectRate=totalAttempts>0?Math.round((rejectedSales/totalAttempts)*100):0;
-const carGap=Math.max(carTarget-carSaved,0);
-const weeksLeft=weeklyCarSavings>0?Math.ceil(carGap/weeklyCarSavings):null;
-const whatIfWeeks=carWhatIf>0?Math.ceil(carGap/carWhatIf):null;
-const carPct=Math.min((carSaved/carTarget)*100,100);
-const targetDate=(()=>{if(!weeksLeft)return null;const d=new Date();d.setDate(d.getDate()+weeksLeft*7);return d.toLocaleDateString(“en-US”,{month:“short”,day:“numeric”,year:“numeric”});})();
-const totalDebt=DEBTS.reduce((s,d)=>s+d.amount,0);
-const settledAmount=DEBTS.filter(d=>settledDebts[d.id]).reduce((s,d)=>s+d.amount,0);
-const debtPct=(settledAmount/totalDebt)*100;
-const settledCount=DEBTS.filter(d=>settledDebts[d.id]).length;
-const estimatedScoreBoost=settledCount>=5?80:settledCount>=3?50:settledCount>=1?20:0;
-const estimatedScore=489+estimatedScoreBoost;
-const nextDebt=DEBTS.filter(d=>!settledDebts[d.id]).sort((a,b)=>a.amount-b.amount)[0];
-const netWorth=carSaved-settledAmount-totalDebt;
+  const paidBills=bills.filter(b=>b.paid).reduce((s,b)=>s+b.amount,0);
+  const expTotal=expenses.reduce((s,e)=>s+e.amount,0);
+  const totalSpent=paidBills+expTotal;
+  const remaining=paycheck-totalSpent;
+  const pct=paycheck>0?Math.min((totalSpent/paycheck)*100,100):0;
+  const sc=remaining<0?"#ff2222":remaining<paycheck*0.2?"#ffcc00":"#00ff88";
+  const allItems=[...bills.filter(b=>b.paid),...expenses];
+  const catSpent=CATS.reduce((acc,cat)=>{acc[cat]=allItems.filter(e=>e.category===cat).reduce((s,e)=>s+e.amount,0);return acc;},{});
+  const catObl=CATS.reduce((acc,cat)=>{acc[cat]=bills.filter(b=>b.category===cat).reduce((s,b)=>s+b.amount,0);return acc;},{});
+  const innerRing=CATS.filter(c=>catSpent[c]>0).map(c=>({v:catSpent[c],c:CC[c]}));
+  const outerRing=CATS.filter(c=>catObl[c]>0).map(c=>({v:catObl[c],c:CC[c]}));
+  const billGroups=Object.entries(bills.reduce((g,b)=>{const k=b.freq==="weekly"?"Weekly":b.dueDay?"Due "+b.dueDay+"th":"No Date";if(!g[k])g[k]=[];g[k].push(b);return g;},{})).sort(([a],[b])=>(parseInt(a.replace(/\D/g,""))||999)-(parseInt(b.replace(/\D/g,""))||999));
+  const wkSales=sales.total;
+  const wkPct=Math.min((wkSales/WGOAL)*100,100);
+  const wkColor=wkSales>=WGOAL?"#00ff88":wkSales>=WMIN?"#ffcc00":"#ff2222";
+  const dayTots=WDAYS.map(d=>({day:d,total:sales.daily[d]||0}));
+  const lineAmt=50+(plan==="premium"?11:plan==="extra"?8:0)+(nextUp?10:0)+(mayBonus?35:0);
+  const bldTotal=builder.reduce((s,i)=>s+i.amount,0);
+  const rejRate=sales.attempts>0?Math.round((sales.rejects/sales.attempts)*100):0;
+  const carGap=Math.max(carTarget-carSaved,0);
+  const wksLeft=carWeekly>0?Math.ceil(carGap/carWeekly):null;
+  const wiWks=carWhatIf>0?Math.ceil(carGap/carWhatIf):null;
+  const carPct=Math.min((carSaved/carTarget)*100,100);
+  const tgtDate=(()=>{if(!wksLeft)return null;const d=new Date();d.setDate(d.getDate()+wksLeft*7);return d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});})();
+  const totDebt=DEBTS.reduce((s,d)=>s+d.amount,0);
+  const settledAmt=DEBTS.filter(d=>settled[d.id]).reduce((s,d)=>s+d.amount,0);
+  const debtPct=(settledAmt/totDebt)*100;
+  const settledCnt=DEBTS.filter(d=>settled[d.id]).length;
+  const scoreBoost=settledCnt>=5?80:settledCnt>=3?50:settledCnt>=1?20:0;
+  const estScore=489+scoreBoost;
+  const nextDebt=DEBTS.filter(d=>!settled[d.id]).sort((a,b)=>a.amount-b.amount)[0];
+  const netWorth=carSaved-settledAmt-totDebt;
+  const prevNetWorth=history.length>0?(history[history.length-1].carSaved||0)-(history[history.length-1].settledAmt||0)-totDebt:null;
+  const netWorthChange=prevNetWorth!==null?netWorth-prevNetWorth:null;
+  const daysWorked=WDAYS.filter(d=>(sales.daily[d]||0)>0).length;
+  const daysRemaining=Math.max(WDAYS.length-daysWorked,1);
+  const needed=Math.max(WGOAL-wkSales,0);
+  const paceNeeded=needed>0?Math.ceil(needed/daysRemaining):0;
 
-const confirmPaycheck=async()=>{const v=parseFloat(paycheckInput);if(!isNaN(v)&&v>0){setPaycheck(String(v));await saveSetting(“paycheck”,String(v));}setEditingPaycheck(false);};
-const archiveAndNewPaycheck=async()=>{
-const amt=parseFloat(newPaycheckInput);if(isNaN(amt)||amt<=0)return;
-const wn=paycheckHistory.length+1;const wd=new Date().toLocaleDateString(“en-US”,{month:“short”,day:“numeric”});
-const entry={week:“Week “+wn,date:wd,paycheck:paycheckAmt,spent:totalSpent,salesTotal:weeklyCommission};
-setPaycheckHistory(h=>[…h,entry]);
-try{await db.post(“week_history”,{week_label:“Week “+wn,week_date:wd,paycheck_amount:paycheckAmt,total_spent:totalSpent,sales_total:weeklyCommission});}catch(e){}
-for(const e of expenses){try{await db.del(“expenses”,e.id);}catch(er){}}
-for(const s of sales){try{await db.del(“sales”,s.id);}catch(er){}}
-for(const b of bills){try{await db.patch(“bills”,b.id,{paid:false});}catch(er){}}
-setPaycheck(String(amt));await saveSetting(“paycheck”,String(amt));
-setExpenses([]);setSales([]);setBills(bs=>bs.map(b=>({…b,paid:false})));
-setNewPaycheckInput(””);setShowNewPaycheckModal(false);showToast(“✓ New paycheck started”);
-};
-const addExpense=async()=>{
-const amt=parseFloat(newAmount);if(!newLabel.trim()||isNaN(amt)||amt<=0)return;
-const due=parseInt(newDueDay);const id=Date.now();
-if(newFreq!==“one-time”){
-const nb={id,label:newLabel.trim(),amount:amt,category:newCat,dueDay:isNaN(due)?0:due,freq:newFreq,paid:false};
-setBills(b=>[…b,nb]);
-try{const r=await db.post(“bills”,{label:nb.label,amount:nb.amount,category:nb.category,due_day:nb.dueDay,freq:nb.freq,paid:false});if(r&&r[0])setBills(bs=>bs.map(b=>b.id===id?{…b,id:r[0].id}:b));}catch(e){}
-showToast(“✓ Added to Bills”,”#22c55e”);setTab(“Bills”);
-}else{
-const ne={id,label:newLabel.trim(),amount:amt,category:newCat,freq:newFreq};
-setExpenses(e=>[…e,ne]);
-try{const r=await db.post(“expenses”,{label:ne.label,amount:ne.amount,category:ne.category,freq:ne.freq});if(r&&r[0])setExpenses(es=>es.map(e=>e.id===id?{…e,id:r[0].id}:e));}catch(e){}
-if(newCat===“Savings”){const ns=carSaved+amt;setCarSaved(ns);await saveSetting(“car_saved”,ns);showToast(“✓ +”+fmt(amt)+” added to savings”,”#22c55e”);}
-else showToast(“✓ Logged”,”#3b82f6”);
-setTab(“Home”);
-}
-setNextId(Date.now());setNewLabel(””);setNewAmount(””);setNewCat(“Food”);setNewFreq(“one-time”);setNewDueDay(””);
-};
-const addBill=async()=>{
-const amt=parseFloat(billAmount);const due=parseInt(billDueDay);
-if(!billLabel.trim()||isNaN(amt)||amt<=0)return;
-const id=Date.now();
-const nb={id,label:billLabel.trim(),amount:amt,category:billCat,dueDay:isNaN(due)?0:due,freq:billFreq,paid:false};
-setBills(b=>[…b,nb]);
-try{const r=await db.post(“bills”,{label:nb.label,amount:nb.amount,category:nb.category,due_day:nb.dueDay,freq:nb.freq,paid:false});if(r&&r[0])setBills(bs=>bs.map(b=>b.id===id?{…b,id:r[0].id}:b));}catch(e){}
-setBillLabel(””);setBillAmount(””);setBillCat(“Bills”);setBillDueDay(””);setBillFreq(“monthly”);setAddingBill(false);
-showToast(“✓ Bill added”);setTab(“Bills”);
-};
-const toggleBill=async(id)=>{const b=bills.find(b=>b.id===id);if(!b)return;setBills(bs=>bs.map(b=>b.id===id?{…b,paid:!b.paid}:b));try{await db.patch(“bills”,id,{paid:!b.paid});}catch(e){}};
-const removeBill=async(id)=>{setBills(bs=>bs.filter(b=>b.id!==id));try{await db.del(“bills”,id);}catch(e){}};
-const removeExpense=async(id)=>{setExpenses(es=>es.filter(e=>e.id!==id));try{await db.del(“expenses”,id);}catch(e){}};
-const toggleGroup=(k)=>setOpenGroups(p=>({…p,[k]:!p[k]}));
-const toggleDebt=(id)=>setSettledDebts(p=>({…p,[id]:!p[id]}));
-const addLineToBuilder=()=>{let amount=50;const parts=[“New Line”];if(linePlan===“extra”){amount+=8;parts.push(“Extra”);}if(linePlan===“premium”){amount+=11;parts.push(“Premium”);}if(lineNextUp){amount+=10;parts.push(“Next Up”);}if(showMayBonus){amount+=35;parts.push(”+$35 Bonus”);}setBuilder(b=>[…b,{type:“line”,label:parts.join(” · “),amount}]);setTotalAttempts(n=>n+1);};
-const addOtherToBuilder=()=>{const prod=PRODUCTS.find(p=>p.id===otherProduct);if(!prod)return;setBuilder(b=>[…b,{type:“other”,label:prod.label,amount:prod.amount}]);};
-const removeFromBuilder=(i)=>setBuilder(b=>b.filter((_,idx)=>idx!==i));
-const commitSale=async()=>{
-if(!builder.length)return;const id=Date.now();
-const ns={id,items:[…builder],total:builderTotal,day:selDay};
-setSales(s=>[…s,ns]);
-try{const r=await db.post(“sales”,{day:selDay,total:builderTotal,items:[…builder]});if(r&&r[0])setSales(ss=>ss.map(s=>s.id===id?{…s,id:r[0].id}:s));}catch(e){}
-setBuilder([]);showToast(“✓ Sale logged · “+fmt(builderTotal),”#22c55e”);
-};
-const removeSale=async(id)=>{setSales(ss=>ss.filter(s=>s.id!==id));try{await db.del(“sales”,id);}catch(e){}};
-const confirmCarEdit=async(f)=>{const v=parseFloat(carInput);if(!isNaN(v)&&v>=0){if(f===“saved”){setCarSaved(v);await saveSetting(“car_saved”,v);}if(f===“target”){setCarTarget(v);await saveSetting(“car_target”,v);}if(f===“weekly”){setWeeklyCarSavings(v);await saveSetting(“car_weekly”,v);}}setEditingCar(null);};
+  const showToast=(msg,color)=>{setToast({msg,color:color||"#00ff88"});setTimeout(()=>setToast(null),2500);};
+  const confirmPC=()=>{const v=parseFloat(pcInput);if(!isNaN(v)&&v>=0)setPaycheck(v);setEditPC(false);};
+  const newWeek=()=>{
+    const amt=parseFloat(newPCInput);if(isNaN(amt)||amt<=0)return;
+    const wn=history.length+1;
+    setHistory(h=>[...h,{week:"Week "+wn,date:newPCDate,paycheck,spent:totalSpent,sales:wkSales,carSaved,settledAmt}]);
+    setPaycheck(amt);setExpenses([]);
+    setSales({total:0,daily:{Thu:0,Fri:0,Sat:0,Sun:0,Mon:0},rejects:0,attempts:0,log:[]});
+    setBills(bs=>bs.map(b=>({...b,paid:false})));
+    setMonthlySales(m=>m+wkSales);
+    setNewPCInput("");setShowNewPC(false);showToast("New week started");
+  };
+  const addEntry=()=>{
+    const amt=parseFloat(fAmt);if(!fLabel.trim()||isNaN(amt)||amt<=0)return;
+    const due=parseInt(fDue);const id=Date.now();
+    if(fFreq!=="one-time"){
+      setBills(b=>[...b,{id,label:fLabel.trim(),amount:amt,category:fCat,dueDay:isNaN(due)?0:due,freq:fFreq,paid:false}]);
+      if(fCat==="Savings")setCarSaved(v=>v+amt);
+      showToast("Added to Bills","#00ff88");
+    }else{
+      setExpenses(e=>[...e,{id,label:fLabel.trim(),amount:amt,category:fCat,freq:fFreq}]);
+      if(fCat==="Savings")setCarSaved(v=>v+amt);
+      showToast("Logged","#d4a017");
+    }
+    setFLabel("");setFAmt("");setFFreq("one-time");setFCat("Food");setFDue("");setShowAddForm(false);
+  };
+  const addQuick=()=>{
+    const q=QUICK.find(q=>q.label===activeQuick);
+    const amt=parseFloat(quickAmt);
+    if(!q||isNaN(amt)||amt<=0)return;
+    const id=Date.now();
+    setExpenses(e=>[...e,{id,label:q.label,amount:amt,category:q.cat,freq:"one-time"}]);
+    if(q.cat==="Savings")setCarSaved(v=>v+amt);
+    showToast(q.icon+" "+q.label+" logged","#d4a017");
+    setQuickAmt("");setActiveQuick(null);
+  };
+  const toggleBill=(id)=>setBills(bs=>bs.map(b=>b.id===id?{...b,paid:!b.paid}:b));
+  const deleteBill=(id)=>{setBills(bs=>bs.filter(b=>b.id!==id));setConfirmDel(null);showToast("Deleted","#ff2222");};
+  const deleteExp=(id)=>{setExpenses(es=>es.filter(e=>e.id!==id));setConfirmDel(null);showToast("Deleted","#ff2222");};
+  const saveBillEdit=()=>{
+    if(!editBillData.label||!editBillData.amount)return;
+    setBills(bs=>bs.map(b=>b.id===editingBill?{...b,...editBillData,amount:parseFloat(editBillData.amount)}:b));
+    setEditingBill(null);showToast("Bill updated");
+  };
+  const toggleG=(k)=>setOpenG(p=>({...p,[k]:!p[k]}));
+  const toggleDebt=(id)=>setSettled(p=>({...p,[id]:!p[id]}));
+  const addLine=()=>{
+    let amt=50;const pts=["New Line"];
+    if(plan==="extra"){amt+=8;pts.push("Extra");}
+    if(plan==="premium"){amt+=11;pts.push("Premium");}
+    if(nextUp){amt+=10;pts.push("Next Up");}
+    if(mayBonus){amt+=35;pts.push("+$35 Bonus");}
+    setBuilder(b=>[...b,{type:"line",label:pts.join(" · "),amount:amt}]);
+    setSales(s=>({...s,attempts:s.attempts+1}));
+  };
+  const addOther=()=>{const p=PRODS.find(p=>p.id===otherProd);if(!p)return;setBuilder(b=>[...b,{type:"other",label:p.label,amount:p.amount}]);};
+  const rmBuilder=(i)=>setBuilder(b=>b.filter((_,idx)=>idx!==i));
+  const logSale=()=>{
+    if(!builder.length)return;
+    const entry={id:Date.now(),items:[...builder],total:bldTotal,day:selDay};
+    setSales(s=>({...s,total:s.total+bldTotal,daily:{...s.daily,[selDay]:(s.daily[selDay]||0)+bldTotal},log:[...s.log,entry]}));
+    setBuilder([]);showToast("Sale logged · "+fmt(bldTotal));
+  };
+  const rmSale=(id)=>{
+    const sale=sales.log.find(s=>s.id===id);if(!sale)return;
+    setSales(s=>({...s,total:s.total-sale.total,daily:{...s.daily,[sale.day]:Math.max(0,(s.daily[sale.day]||0)-sale.total)},log:s.log.filter(x=>x.id!==id)}));
+  };
+  const saveCarEdit=(f)=>{const v=parseFloat(carIn);if(!isNaN(v)&&v>=0){if(f==="saved")setCarSaved(v);if(f==="target")setCarTarget(v);if(f==="weekly")setCarWeekly(v);}setEditCar(null);};
 
-if(!dbReady)return(
-<div style={{position:“fixed”,inset:0,background:”#05080f”,display:“flex”,flexDirection:“column”,alignItems:“center”,justifyContent:“center”,gap:16}}>
-<div style={{fontSize:48}}>💵</div>
-<div style={{fontSize:24,fontWeight:800,color:”#f8fafc”}}>Cash Flow</div>
-<div style={{fontSize:14,color:”#475569”}}>Loading your data…</div>
-</div>
-);
+  if(!loaded)return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",flexDirection:"column",gap:16}}><div style={{fontSize:40}}>💵</div><div style={{fontSize:18,fontWeight:800,color:"#fff"}}>Cash Flow</div></div>;
 
-return(
-<div style={{minHeight:“100vh”,background:”#05080f”,color:”#e2e8f0”,maxWidth:500,margin:“0 auto”,paddingBottom:100}}>
-{toast&&<div style={{position:“fixed”,top:60,left:“50%”,transform:“translateX(-50%)”,background:toast.color,color:”#fff”,padding:“12px 24px”,borderRadius:14,fontSize:14,fontWeight:700,zIndex:999,boxShadow:“0 4px 20px rgba(0,0,0,0.4)”,whiteSpace:“nowrap”}}>{toast.msg}</div>}
-
-```
-  {showNewPaycheckModal&&(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:998,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 24px"}}>
-      <div style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:24,padding:"28px 24px",width:"100%",maxWidth:400}}>
-        <div style={{fontSize:11,letterSpacing:3,color:"#475569",fontWeight:700,textTransform:"uppercase",marginBottom:6}}>NEW PAYCHECK</div>
-        <div style={{fontSize:20,fontWeight:800,color:"#f8fafc",marginBottom:6}}>Archive & start fresh</div>
-        <div style={{fontSize:13,color:"#475569",marginBottom:16}}>Previous week saved to history. Bills reset to unpaid.</div>
-        <div style={{background:"#080c14",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
-          <div style={{fontSize:11,color:"#64748b",fontWeight:700,letterSpacing:2,marginBottom:8}}>NEW AMOUNT</div>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <span style={{color:"#60a5fa",fontSize:20,fontWeight:700}}>$</span>
-            <input value={newPaycheckInput} onChange={e=>setNewPaycheckInput(e.target.value)} placeholder="0.00" autoFocus style={{background:"transparent",border:"none",borderBottom:"2px solid #3b82f6",color:"#f8fafc",fontSize:24,fontWeight:800,width:"100%",outline:"none"}}/>
+  return(
+    <div className="app">
+      {toast&&<div className="toast" style={{background:toast.color}}>{toast.msg}</div>}
+      {confirmDel&&(
+        <div className="modal-bg" onClick={()=>setConfirmDel(null)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:18,fontWeight:800,color:"#fff",marginBottom:8}}>Delete this?</div>
+            <div style={{fontSize:14,color:"#444",marginBottom:20}}>This cannot be undone.</div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setConfirmDel(null)} style={{flex:1,background:"#222",border:"none",borderRadius:14,color:"#444",padding:"14px",cursor:"pointer",fontSize:14,fontWeight:700}}>Cancel</button>
+              <button onClick={()=>confirmDel.type==="bill"?deleteBill(confirmDel.id):deleteExp(confirmDel.id)} style={{flex:1,background:"linear-gradient(135deg,#7f1d1d,#ff2222)",border:"none",borderRadius:14,color:"#fff",padding:"14px",cursor:"pointer",fontSize:14,fontWeight:800}}>Delete</button>
+            </div>
           </div>
-        </div>
-        <div style={{display:"flex",gap:10}}>
-          <button onClick={()=>setShowNewPaycheckModal(false)} style={{flex:1,background:"#1e293b",border:"none",borderRadius:14,color:"#475569",padding:"14px",cursor:"pointer",fontSize:14,fontWeight:700}}>Cancel</button>
-          <button onClick={archiveAndNewPaycheck} style={{flex:2,background:"linear-gradient(135deg,#1d4ed8,#3b82f6)",border:"none",borderRadius:14,color:"#fff",padding:"14px",cursor:"pointer",fontSize:14,fontWeight:800}}>Start New Week ✓</button>
-        </div>
-      </div>
-    </div>
-  )}
-
-  <div style={{padding:"48px 24px 16px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-    <div>
-      <div style={{fontSize:12,letterSpacing:5,color:"#334155",textTransform:"uppercase",marginBottom:6,fontWeight:600}}>PRESTIGE · BROADWAY BANK</div>
-      <div style={{fontSize:34,fontWeight:800,color:"#f8fafc",letterSpacing:-1.5}}>Cash Flow</div>
-      <div style={{fontSize:13,color:"#475569",marginTop:4}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric"})}</div>
-    </div>
-    {paycheckAmt>0&&<button onClick={()=>setShowNewPaycheckModal(true)} style={{background:"linear-gradient(135deg,#1d4ed8,#3b82f6)",border:"none",borderRadius:14,color:"#fff",padding:"10px 16px",cursor:"pointer",fontSize:12,fontWeight:700,marginTop:8,flexShrink:0}}>💵 New Check</button>}
-  </div>
-
-  <div style={{padding:"0 20px",display:"flex",gap:12,marginBottom:14}}>
-    <div style={{flex:1,background:"linear-gradient(145deg,#0d1b35,#0f2448)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:20,padding:"20px 18px",position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:-30,right:-30,width:100,height:100,background:"radial-gradient(circle,rgba(59,130,246,0.2) 0%,transparent 70%)",borderRadius:"50%"}}/>
-      <div style={{fontSize:11,letterSpacing:3,color:"#64748b",fontWeight:700,marginBottom:10}}>PAYCHECK</div>
-      {editingPaycheck?(
-        <div>
-          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-            <span style={{color:"#60a5fa",fontSize:20,fontWeight:700}}>$</span>
-            <input value={paycheckInput} onChange={e=>setPaycheckInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&confirmPaycheck()} placeholder="0.00" autoFocus style={{background:"transparent",border:"none",borderBottom:"2px solid #3b82f6",color:"#f8fafc",fontSize:24,fontWeight:800,width:"100%",outline:"none"}}/>
-          </div>
-          <button onClick={confirmPaycheck} style={{background:"#3b82f6",border:"none",borderRadius:10,color:"#fff",padding:"8px 16px",cursor:"pointer",fontSize:13,fontWeight:700,width:"100%"}}>SET PAYCHECK</button>
-        </div>
-      ):(
-        <div>
-          <div style={{fontSize:28,fontWeight:800,color:"#60a5fa",letterSpacing:-1}}>{paycheckAmt>0?fmt(paycheckAmt):"—"}</div>
-          <button onClick={()=>{setEditingPaycheck(true);setPaycheckInput(paycheck);}} style={{background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:11,marginTop:6,padding:0}}>tap to update</button>
         </div>
       )}
-    </div>
-    <div style={{flex:1,background:remaining<0?"linear-gradient(145deg,#2d0a0a,#1f0606)":remaining<paycheckAmt*0.2?"linear-gradient(145deg,#1f1200,#150d00)":"linear-gradient(145deg,#061a10,#041209)",border:"1px solid "+(remaining<0?"rgba(239,68,68,0.4)":remaining<paycheckAmt*0.2?"rgba(234,179,8,0.4)":"rgba(34,197,94,0.4)"),borderRadius:20,padding:"20px 18px",position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:-30,right:-30,width:100,height:100,background:"radial-gradient(circle,"+sc+"22 0%,transparent 70%)",borderRadius:"50%"}}/>
-      <div style={{fontSize:11,letterSpacing:3,color:"#64748b",fontWeight:700,marginBottom:10}}>REMAINING</div>
-      <div style={{fontSize:28,fontWeight:800,color:sc,letterSpacing:-1}}>{paycheckAmt>0?fmt(remaining):"—"}</div>
-      <div style={{fontSize:11,color:"#334155",marginTop:6}}>{fmt(totalSpent)} out</div>
-    </div>
-  </div>
-
-  {paycheckAmt>0&&<div style={{padding:"0 20px",marginBottom:14}}>
-    <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#475569",fontWeight:600,marginBottom:8}}><span>SPENT {fmt(totalSpent)}</span><span>{Math.round(pct)}%</span></div>
-    <div style={{background:"#0f172a",borderRadius:99,height:8,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:"linear-gradient(90deg,"+sc+"99,"+sc+")",borderRadius:99,transition:"width 0.5s ease"}}/></div>
-  </div>}
-
-  <div style={{padding:"0 20px",display:"flex",gap:10,marginBottom:20}}>
-    {[{id:"Sales",icon:"💰",val:fmtS(weeklyCommission),sub:"of $"+WEEKLY_GOAL+" goal",pct:weeklyPct,color:weeklyColor,border:"rgba(124,58,237,0.4)",bg:"linear-gradient(145deg,#130a2a,#1a0f35)",glow:"rgba(124,58,237,0.25)",barBg:"#0f0a1f",barColor:"linear-gradient(90deg,#7c3aed,"+weeklyColor+")"},{id:"Car",icon:"🚗",val:fmt(carSaved),sub:(weeksLeft||"?")+"w to goal",pct:carPct,color:"#22c55e",border:"rgba(34,197,94,0.3)",bg:"linear-gradient(145deg,#061a10,#041209)",glow:"rgba(34,197,94,0.2)",barBg:"#0a1a0a",barColor:"linear-gradient(90deg,#16a34a,#4ade80)"},{id:"Debt",icon:"💳",val:fmt(totalDebt-settledAmount),sub:settledCount+"/"+DEBTS.length+" settled",pct:debtPct,color:"#ef4444",border:"rgba(239,68,68,0.3)",bg:"linear-gradient(145deg,#1f0606,#2d0a0a)",glow:"rgba(239,68,68,0.2)",barBg:"#1a0505",barColor:"linear-gradient(90deg,#ef4444,#22c55e)"}].map(c=>(
-      <div key={c.id} onClick={()=>setTab(c.id)} style={{flex:1,background:c.bg,border:"1px solid "+c.border,borderRadius:18,padding:"16px 14px",cursor:"pointer",position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",top:-20,right:-20,width:70,height:70,background:"radial-gradient(circle,"+c.glow+" 0%,transparent 70%)",borderRadius:"50%"}}/>
-        <div style={{fontSize:18,marginBottom:6}}>{c.icon}</div>
-        <div style={{fontSize:20,fontWeight:800,color:c.color,letterSpacing:-0.5}}>{c.val}</div>
-        <div style={{fontSize:10,color:"#64748b",marginTop:4,fontWeight:600}}>{c.sub}</div>
-        <div style={{background:c.barBg,borderRadius:99,height:4,overflow:"hidden",marginTop:10}}><div style={{height:"100%",width:Math.min(c.pct,100)+"%",background:c.barColor,borderRadius:99,transition:"width 0.5s"}}/></div>
-      </div>
-    ))}
-  </div>
-
-  <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:500,background:"rgba(5,8,15,0.95)",borderTop:"1px solid #1e293b",padding:"10px 20px 28px",zIndex:100}}>
-    <div style={{display:"flex",justifyContent:"space-around"}}>
-      {TABS.map(t=>(
-        <button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"6px 10px"}}>
-          <span style={{fontSize:22,filter:tab===t.id?"none":"grayscale(1) opacity(0.4)"}}>{t.icon}</span>
-          <span style={{fontSize:10,fontWeight:700,color:tab===t.id?"#f8fafc":"#334155",letterSpacing:0.5}}>{t.label.toUpperCase()}</span>
-          {tab===t.id&&<div style={{width:4,height:4,borderRadius:"50%",background:"#3b82f6"}}/>}
-        </button>
-      ))}
-    </div>
-  </div>
-
-  {tab==="Home"&&<div style={{padding:"0 20px"}}>
-    <div style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:24,padding:"24px 20px",marginBottom:16}}>
-      <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:16,textAlign:"center"}}>SPENDING OVERVIEW</div>
-      {paycheckAmt>0?<>
-        <DonutChart innerData={innerRing.length>0?innerRing:[{label:"None",value:1,color:"#1e293b"}]} outerData={outerRing.length>0?outerRing:[{label:"None",value:1,color:"#1e293b"}]} centerLabel={remaining>=0?fmtS(remaining):"-"+fmtS(Math.abs(remaining))} centerSub={Math.round(pct)+"% used"} size={240}/>
-        <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:12,flexWrap:"wrap"}}>
-          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#475569"}}><div style={{width:10,height:10,borderRadius:"50%",background:"#ffffff88"}}/>Inner = spent</div>
-          <div style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#475569"}}><div style={{width:10,height:10,borderRadius:"50%",background:"#ffffff33"}}/>Outer = obligations</div>
-        </div>
-      </>:<div style={{textAlign:"center",padding:"40px 0",color:"#334155"}}><div style={{fontSize:36,marginBottom:12}}>💵</div><div style={{fontSize:15}}>Set your paycheck above</div></div>}
-    </div>
-    {catTotals.length>0&&<div style={{marginBottom:16}}>
-      <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:12}}>CATEGORY BREAKDOWN</div>
-      {catTotals.map(({cat,spent,total})=>(
-        <div key={cat} style={{background:"#0a0f1a",border:"1px solid "+CAT_COLORS[cat]+"22",borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-          <div style={{width:10,height:10,borderRadius:"50%",background:CAT_COLORS[cat],flexShrink:0}}/>
-          <span style={{fontSize:16}}>{CAT_ICONS[cat]}</span>
-          <div style={{flex:1}}>
-            <div style={{fontSize:14,fontWeight:600,color:"#e2e8f0"}}>{cat}</div>
-            <div style={{background:"#080c14",borderRadius:99,height:4,overflow:"hidden",marginTop:6}}><div style={{height:"100%",width:(total>0?Math.min((spent/total)*100,100):0)+"%",background:CAT_COLORS[cat],borderRadius:99}}/></div>
+      {editingBill&&(
+        <div className="modal-bg" onClick={()=>setEditingBill(null)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <span className="lbl" style={{marginBottom:14}}>EDIT BILL</span>
+            <input value={editBillData.label||""} onChange={e=>setEditBillData(d=>({...d,label:e.target.value}))} className="inp" placeholder="Label"/>
+            <div style={{position:"relative"}}><span style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",color:"#444",fontSize:15,fontWeight:700}}>$</span><input value={editBillData.amount||""} onChange={e=>setEditBillData(d=>({...d,amount:e.target.value}))} type="number" className="inp" style={{paddingLeft:34}} placeholder="0.00"/></div>
+            <input value={editBillData.dueDay||""} onChange={e=>setEditBillData(d=>({...d,dueDay:e.target.value}))} type="number" className="inp" placeholder="Due day"/>
+            <div style={{display:"flex",gap:10,marginTop:4}}>
+              <button onClick={()=>setEditingBill(null)} style={{flex:1,background:"#222",border:"none",borderRadius:14,color:"#444",padding:"14px",cursor:"pointer",fontSize:14,fontWeight:700}}>Cancel</button>
+              <button onClick={saveBillEdit} className="btn-blue" style={{flex:2}}>Save Changes</button>
+            </div>
           </div>
-          <div style={{textAlign:"right"}}><div style={{fontSize:14,fontWeight:700,color:CAT_COLORS[cat]}}>{fmt(spent)}</div>{total>spent&&<div style={{fontSize:10,color:"#334155"}}>of {fmt(total)}</div>}</div>
         </div>
-      ))}
-    </div>}
-    <div style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:18,padding:"18px 20px",marginBottom:16}}>
-      <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:12}}>NET WORTH SNAPSHOT</div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:800,color:"#22c55e"}}>{fmt(carSaved)}</div><div style={{fontSize:10,color:"#475569",marginTop:4}}>SAVINGS</div></div>
-        <div style={{fontSize:20,color:"#334155"}}>−</div>
-        <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:800,color:"#ef4444"}}>{fmt(totalDebt-settledAmount)}</div><div style={{fontSize:10,color:"#475569",marginTop:4}}>DEBT</div></div>
-        <div style={{fontSize:20,color:"#334155"}}>=</div>
-        <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:800,color:netWorth>=0?"#22c55e":"#ef4444"}}>{netWorth>=0?fmt(netWorth):"-"+fmt(Math.abs(netWorth))}</div><div style={{fontSize:10,color:"#475569",marginTop:4}}>NET WORTH</div></div>
-      </div>
-      <div style={{background:"#080c14",borderRadius:10,padding:"8px 12px",textAlign:"center"}}><div style={{fontSize:11,color:netWorth>=0?"#22c55e":"#64748b"}}>{netWorth>=0?"✅ Positive net worth":"Debt exceeds savings · every collection settled = progress"}</div></div>
-    </div>
-    {paycheckHistory.length>0&&<div style={{marginBottom:16}}>
-      <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:12}}>WEEK HISTORY</div>
-      {paycheckHistory.slice().reverse().map((w,i)=>(
-        <div key={i} style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:14,padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <div><div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{w.week} · {w.date}</div><div style={{fontSize:11,color:"#475569",marginTop:3}}>Check {fmt(w.paycheck)} · Spent {fmt(w.spent)}</div></div>
-          <div style={{textAlign:"right"}}><div style={{fontSize:14,fontWeight:700,color:"#22c55e"}}>+{fmt(w.salesTotal)}</div><div style={{fontSize:10,color:"#475569"}}>in sales</div></div>
+      )}
+      {showNewPC&&(
+        <div className="modal-bg">
+          <div className="modal">
+            <span className="gothic" style={{fontSize:22,color:"#555",display:"block",marginBottom:6}}>New Paycheck</span>
+            <div style={{fontSize:20,fontWeight:800,color:"#fff",marginBottom:6}}>Archive week & start fresh</div>
+            <div style={{fontSize:13,color:"#444",marginBottom:16}}>Current week saved to history. Bills reset to unpaid.</div>
+            <input type="number" value={newPCInput} onChange={e=>setNewPCInput(e.target.value)} placeholder="New paycheck amount" className="inp"/>
+            <input type="date" value={newPCDate} onChange={e=>setNewPCDate(e.target.value)} className="inp"/>
+            <div style={{display:"flex",gap:10,marginTop:4}}>
+              <button onClick={()=>setShowNewPC(false)} style={{flex:1,background:"#222",border:"none",borderRadius:14,color:"#444",padding:"14px",cursor:"pointer",fontSize:14,fontWeight:700}}>Cancel</button>
+              <button onClick={newWeek} className="btn-blue" style={{flex:2}}>Start New Week</button>
+            </div>
+          </div>
         </div>
-      ))}
-      {paycheckHistory.length>=2&&<div style={{background:"linear-gradient(145deg,#0d1b35,#0f2448)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:14,padding:"14px 16px",marginTop:10}}>
-        <div style={{fontSize:11,color:"#475569",fontWeight:700,letterSpacing:2,marginBottom:8}}>AVERAGES</div>
-        <div style={{display:"flex",justifyContent:"space-between"}}>
-          <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#60a5fa"}}>{fmt(paycheckHistory.reduce((s,w)=>s+w.paycheck,0)/paycheckHistory.length)}</div><div style={{fontSize:10,color:"#475569",marginTop:3}}>avg check</div></div>
-          <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#f87171"}}>{fmt(paycheckHistory.reduce((s,w)=>s+w.spent,0)/paycheckHistory.length)}</div><div style={{fontSize:10,color:"#475569",marginTop:3}}>avg spent</div></div>
-          <div style={{textAlign:"center"}}><div style={{fontSize:16,fontWeight:800,color:"#22c55e"}}>{fmt(paycheckHistory.reduce((s,w)=>s+w.salesTotal,0)/paycheckHistory.length)}</div><div style={{fontSize:10,color:"#475569",marginTop:3}}>avg sales</div></div>
-        </div>
-      </div>}
-    </div>}
-  </div>}
+      )}
 
-  {tab==="Bills"&&<div style={{padding:"0 20px"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-      <div><div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase"}}>BILLS BY PAYCHECK</div><div style={{fontSize:13,color:"#475569",marginTop:4}}>Tap week to expand</div></div>
-      <button onClick={()=>setAddingBill(!addingBill)} style={{background:addingBill?"#1e293b":"#3b82f6",border:"none",borderRadius:12,color:"#fff",padding:"10px 18px",cursor:"pointer",fontSize:14,fontWeight:700,flexShrink:0}}>{addingBill?"Cancel":"+ Bill"}</button>
-    </div>
-    {addingBill&&<div style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:20,padding:"20px",marginBottom:20}}>
-      <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:16}}>NEW BILL</div>
-      <input placeholder="Bill name" value={billLabel} onChange={e=>setBillLabel(e.target.value)} style={{...IS,marginBottom:10}}/>
-      <div style={{position:"relative",marginBottom:10}}><span style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",color:"#475569",fontSize:16,fontWeight:700}}>$</span><input placeholder="0.00" value={billAmount} onChange={e=>setBillAmount(e.target.value)} type="number" style={{...IS,paddingLeft:36}}/></div>
-      <input placeholder="Due day of month (e.g. 22)" value={billDueDay} onChange={e=>setBillDueDay(e.target.value)} type="number" style={{...IS,marginBottom:14}}/>
-      <div style={{fontSize:11,color:"#475569",fontWeight:700,letterSpacing:2,marginBottom:8}}>FREQUENCY</div>
-      <div style={{display:"flex",gap:8,marginBottom:14}}>{Object.entries(FREQ).map(([k,l])=><button key={k} onClick={()=>setBillFreq(k)} style={{flex:1,padding:"10px 4px",border:"2px solid "+(billFreq===k?"#3b82f6":"#1e293b"),borderRadius:12,background:billFreq===k?"#3b82f622":"#080c14",color:billFreq===k?"#60a5fa":"#475569",fontSize:10,fontWeight:700,cursor:"pointer"}}>{l}</button>)}</div>
-      <div style={{fontSize:11,color:"#475569",fontWeight:700,letterSpacing:2,marginBottom:8}}>CATEGORY</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>{CATS.map(c=><button key={c} onClick={()=>setBillCat(c)} style={{padding:"8px 12px",border:"1.5px solid "+(billCat===c?CAT_COLORS[c]:"#1e293b"),borderRadius:10,background:billCat===c?CAT_COLORS[c]+"22":"#080c14",color:billCat===c?CAT_COLORS[c]:"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>{CAT_ICONS[c]} {c}</button>)}</div>
-      <button onClick={addBill} style={{width:"100%",background:"linear-gradient(135deg,#1d4ed8,#3b82f6)",border:"none",borderRadius:14,color:"#fff",padding:"16px",cursor:"pointer",fontSize:16,fontWeight:800}}>ADD BILL</button>
-    </div>}
-    {bills.length===0&&!addingBill&&<div style={{textAlign:"center",color:"#1e293b",fontSize:15,padding:"50px 0"}}><div style={{fontSize:36,marginBottom:12}}>📅</div>No bills yet<br/>Tap + Bill to add</div>}
-    {bills.length>0&&<div style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:14,padding:"14px 18px",marginBottom:16,display:"flex",justifyContent:"space-between"}}><div><div style={{fontSize:10,color:"#64748b",fontWeight:700,letterSpacing:2,marginBottom:4}}>TOTAL BILLS</div><div style={{fontSize:22,fontWeight:800,color:"#f87171"}}>{fmt(bills.reduce((s,b)=>s+b.amount,0))}</div></div><div style={{textAlign:"right"}}><div style={{fontSize:10,color:"#64748b",fontWeight:700,letterSpacing:2,marginBottom:4}}>PAID</div><div style={{fontSize:22,fontWeight:800,color:"#22c55e"}}>{fmt(paidBillsTotal)}</div></div></div>}
-    <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      {billGroups.map(([gk,gb])=>{
-        const isOpen=!!openGroups[gk];const gt=gb.reduce((s,b)=>s+b.amount,0);const gpt=gb.filter(b=>b.paid).reduce((s,b)=>s+b.amount,0);const gpct=gt>0?(gpt/gt)*100:0;const allPaid=gpt>=gt&&gb.length>0;const spct=gt>0?Math.min((weeklyCommission/gt)*100,100):0;const sc2=weeklyCommission>=gt?"#22c55e":weeklyCommission>=gt*0.7?"#eab308":"#ef4444";
-        return<div key={gk}>
-          <button onClick={()=>toggleGroup(gk)} style={{width:"100%",textAlign:"left",cursor:"pointer",background:"linear-gradient(145deg,#0d1b35,#0f2448)",border:"1.5px solid "+(isOpen?"rgba(59,130,246,0.4)":"#1e293b"),borderRadius:isOpen?"18px 18px 0 0":18,padding:"18px 20px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}><div style={{fontSize:20}}>📅</div><div><div style={{fontSize:10,color:"#475569",fontWeight:700,letterSpacing:2,marginBottom:3}}>PAYCHECK WEEK</div><div style={{fontSize:20,fontWeight:800,color:"#60a5fa"}}>{gk}</div></div></div>
-              <div style={{display:"flex",alignItems:"center",gap:14}}><div style={{textAlign:"right"}}><div style={{fontSize:10,color:"#475569",fontWeight:700,letterSpacing:2,marginBottom:3}}>TOTAL DUE</div><div style={{fontSize:20,fontWeight:800,color:allPaid?"#22c55e":"#f87171"}}>{fmt(gt)}</div></div><div style={{fontSize:18,color:"#475569",transform:isOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▾</div></div>
+      {tab==="Home"&&(
+        <div className="section" style={{paddingTop:24}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+            <div>
+              <div style={{fontSize:11,letterSpacing:4,color:"#333",fontWeight:600,textTransform:"uppercase",marginBottom:4}}>PRESTIGE · BROADWAY BANK</div>
+              <div className="gothic" style={{fontSize:40,color:"#fff",letterSpacing:1,lineHeight:1.1}}>Cash Flow</div>
+              <div style={{fontSize:13,color:"#444",marginTop:4}}>{today.toLocaleDateString("en-US",{weekday:"short",month:"long",day:"numeric"})}</div>
             </div>
-            <div style={{marginTop:10}}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#334155",fontWeight:600,marginBottom:4}}><span>Bills paid</span><span>{fmt(gpt)} of {fmt(gt)}</span></div>
-              <div style={{background:"#080c14",borderRadius:99,height:4,overflow:"hidden",marginBottom:8}}><div style={{height:"100%",width:gpct+"%",background:"linear-gradient(90deg,#22c55e,#4ade80)",borderRadius:99}}/></div>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#334155",fontWeight:600,marginBottom:4}}><span>Sales earned</span><span style={{color:sc2}}>{fmt(weeklyCommission)} of {fmt(gt)} needed</span></div>
-              <div style={{background:"#080c14",borderRadius:99,height:4,overflow:"hidden"}}><div style={{height:"100%",width:spct+"%",background:"linear-gradient(90deg,#7c3aed,"+sc2+")",borderRadius:99}}/></div>
+            <button onClick={()=>setShowNewPC(true)} style={{background:"#d4a017",border:"none",borderRadius:14,color:"#fff",padding:"10px 14px",cursor:"pointer",fontSize:12,fontWeight:700,marginTop:8,flexShrink:0,whiteSpace:"nowrap"}}>💵 New Check</button>
+          </div>
+          <div style={{display:"flex",gap:12,marginBottom:14}}>
+            <div style={{flex:1,background:"#000",border:"2px solid #d4a017",borderRadius:20,padding:"18px",position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:-30,right:-30,width:80,height:80,background:"radial-gradient(circle,rgba(212,160,23,0.12) 0%,transparent 70%)",borderRadius:"50%"}}/>
+              <span className="lbl">PAYCHECK</span>
+              {editPC?(
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                    <span style={{color:"#d4a017",fontSize:18,fontWeight:700}}>$</span>
+                    <input value={pcInput} onChange={e=>setPcInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&confirmPC()} placeholder="0.00" autoFocus style={{background:"transparent",border:"none",borderBottom:"2px solid #d4a017",color:"#fff",fontSize:22,fontWeight:800,width:"100%",outline:"none"}}/>
+                  </div>
+                  <button onClick={confirmPC} style={{background:"#d4a017",border:"none",borderRadius:10,color:"#fff",padding:"8px",cursor:"pointer",fontSize:12,fontWeight:700,width:"100%"}}>SET</button>
+                </div>
+              ):(
+                <div>
+                  <div style={{fontSize:26,fontWeight:800,color:"#d4a017",letterSpacing:-1}}>{paycheck>0?fmt(paycheck):"—"}</div>
+                  <button onClick={()=>{setEditPC(true);setPcInput(String(paycheck));}} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:11,marginTop:4,padding:0}}>tap to update</button>
+                </div>
+              )}
             </div>
-          </button>
-          {isOpen&&<div style={{background:"#080c14",border:"1.5px solid rgba(59,130,246,0.15)",borderTop:"none",borderRadius:"0 0 18px 18px",padding:"12px 14px 14px",display:"flex",flexDirection:"column",gap:8}}>
-            {gb.map(b=>{const du=b.dueDay>0?(()=>{const t=new Date();t.setDate(b.dueDay);if(t<new Date())t.setMonth(t.getMonth()+1);return Math.ceil((t-new Date())/86400000);})():999;const uc=du===0?"#ef4444":du<=3?"#eab308":"#22c55e";const dl=du===0?"TODAY":du<999?du+"d":"";
-              return<div key={b.id} style={{background:b.paid?"linear-gradient(145deg,#061a10,#041209)":"#0a0f1a",border:"1.5px solid "+(b.paid?"rgba(34,197,94,0.4)":CAT_COLORS[b.category]+"33"),borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <button onClick={()=>toggleBill(b.id)} style={{display:"flex",alignItems:"center",gap:12,background:"none",border:"none",cursor:"pointer",textAlign:"left",flex:1,padding:0}}>
-                  <div style={{width:42,height:42,borderRadius:13,background:b.paid?"#22c55e18":CAT_COLORS[b.category]+"18",border:"2px solid "+(b.paid?"#22c55e44":CAT_COLORS[b.category]+"44"),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:20}}>{b.paid?"✓":CAT_ICONS[b.category]}</div>
-                  <div><div style={{fontSize:15,fontWeight:700,color:b.paid?"#4ade80":"#e2e8f0",textDecoration:b.paid?"line-through":"none"}}>{b.label}</div><div style={{fontSize:11,color:"#475569",marginTop:2}}>{FREQ[b.freq]}{b.dueDay>0?" · due "+b.dueDay+"th":""}</div>{!b.paid&&dl&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}><div style={{fontSize:10,fontWeight:700,color:uc,background:uc+"18",border:"1px solid "+uc+"44",borderRadius:6,padding:"2px 7px"}}>{dl}</div></div>}</div>
-                </button>
-                <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:17,fontWeight:700,color:b.paid?"#22c55e":"#f87171",textDecoration:b.paid?"line-through":"none"}}>{fmt(b.amount)}</span><button onClick={()=>removeBill(b.id)} style={{background:"#1e293b",border:"none",borderRadius:8,color:"#475569",cursor:"pointer",fontSize:12,padding:"4px 8px"}}>✕</button></div>
-              </div>;
-            })}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 4px 0",borderTop:"1px solid #1e293b",marginTop:4}}><span style={{fontSize:12,color:"#475569",fontWeight:700}}>TOTAL THIS CHECK</span><span style={{fontSize:18,fontWeight:800,color:"#f87171"}}>{fmt(gt)}</span></div>
+            <div style={{flex:1,background:"#000",border:"2px solid "+(remaining<0?"#ff2222":remaining<paycheck*0.2?"#ffcc00":"#00ff88"),borderRadius:20,padding:"18px",position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:-30,right:-30,width:80,height:80,background:"radial-gradient(circle,"+sc+"44 0%,transparent 60%)",borderRadius:"50%"}}/>
+              <span className="lbl">REMAINING</span>
+              <div style={{fontSize:26,fontWeight:800,color:sc,letterSpacing:-1}}>{paycheck>0?fmt(remaining):"—"}</div>
+              <div style={{fontSize:11,color:"#333",marginTop:4}}>{fmt(totalSpent)} spent</div>
+            </div>
+          </div>
+          {paycheck>0&&<div style={{marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#444",fontWeight:600,marginBottom:6}}><span>SPENT {fmt(totalSpent)}</span><span>{Math.round(pct)}%</span></div>
+            <div className="ptrack" style={{height:8}}><div className="pfill" style={{width:pct+"%",background:"linear-gradient(90deg,"+sc+"88,"+sc+")"}}/></div>
           </div>}
-        </div>;
-      })}
-    </div>
-  </div>}
-
-  {tab==="Sales"&&<div style={{padding:"0 20px"}}>
-    <div style={{background:"linear-gradient(145deg,#130a2a,#1a0f35)",border:"1px solid rgba(124,58,237,0.35)",borderRadius:24,padding:"28px 24px",marginBottom:14,textAlign:"center",position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:-40,left:"50%",transform:"translateX(-50%)",width:200,height:200,background:"radial-gradient(circle,rgba(124,58,237,0.2) 0%,transparent 60%)",borderRadius:"50%"}}/>
-      <div style={{fontSize:12,letterSpacing:4,color:"#7c3aed",fontWeight:700,textTransform:"uppercase",marginBottom:8}}>THIS WEEK</div>
-      <div style={{fontSize:64,fontWeight:900,color:weeklyColor,letterSpacing:-3,lineHeight:1}}>{fmtS(weeklyCommission)}</div>
-      <div style={{fontSize:14,color:"#64748b",marginTop:10,fontWeight:600}}>goal ${WEEKLY_GOAL} · min ${WEEKLY_MIN} · pip ${WEEKLY_PIP}</div>
-      <div style={{background:"#080c14",borderRadius:99,height:10,overflow:"hidden",margin:"16px 0 10px"}}><div style={{height:"100%",width:weeklyPct+"%",background:"linear-gradient(90deg,#7c3aed,"+weeklyColor+")",borderRadius:99}}/></div>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700}}><span style={{color:"#ef4444"}}>PIP ${WEEKLY_PIP}</span><span style={{color:"#eab308"}}>MIN ${WEEKLY_MIN}</span><span style={{color:"#22c55e"}}>ALPHA ${WEEKLY_GOAL}</span></div>
-    </div>
-    <div style={{display:"flex",gap:10,marginBottom:14}}>
-      <div style={{flex:1,background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:14,padding:"14px",textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"#a78bfa"}}>{fmt(monthlyCommission)}</div><div style={{fontSize:10,color:"#64748b",marginTop:4,fontWeight:600}}>MONTH TOTAL</div></div>
-      <div style={{flex:1,background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:14,padding:"14px",textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:rejectRate<25?"#22c55e":"#ef4444"}}>{rejectRate}%</div><div style={{fontSize:10,color:"#64748b",marginTop:4,fontWeight:600}}>REJECT RATE</div><div style={{fontSize:9,color:"#334155",marginTop:2}}>need &lt;25%</div></div>
-      <div style={{flex:1,background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:14,padding:"14px",textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"#22c55e"}}>{fmt(weeklyCommission)}</div><div style={{fontSize:10,color:"#64748b",marginTop:4,fontWeight:600}}>PROJECTED</div></div>
-    </div>
-    <div style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:14,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-      <div><div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>Log a Rejection</div><div style={{fontSize:11,color:"#475569",marginTop:2}}>Tracks reject rate · need below 25%</div></div>
-      <button onClick={()=>{setRejectedSales(n=>n+1);setTotalAttempts(n=>n+1);saveSetting("rejected",rejectedSales+1);saveSetting("attempts",totalAttempts+1);}} style={{background:"#1e293b",border:"none",borderRadius:10,color:"#f87171",padding:"10px 16px",cursor:"pointer",fontSize:13,fontWeight:700}}>+ Reject</button>
-    </div>
-    <div style={{background:weeklyCommission>=WEEKLY_GOAL?"linear-gradient(145deg,#061a10,#041209)":weeklyCommission>=WEEKLY_MIN?"linear-gradient(145deg,#1a1200,#120e00)":"linear-gradient(145deg,#1f0606,#150404)",border:"1.5px solid "+weeklyColor+"44",borderRadius:16,padding:"14px 18px",marginBottom:20,textAlign:"center"}}>
-      <div style={{fontSize:15,fontWeight:700,color:weeklyColor}}>{weeklyCommission>=WEEKLY_GOAL?"✅ ALPHA — Leader Binder pace":weeklyCommission>=WEEKLY_MIN?"⚠️ ON TRACK — push for Alpha":"🔴 BELOW MIN — lock in"}</div>
-      <div style={{fontSize:12,color:"#64748b",marginTop:4}}>{weeklyCommission>=WEEKLY_GOAL?fmt(weeklyCommission-WEEKLY_GOAL)+" above Alpha":fmt(WEEKLY_GOAL-weeklyCommission)+" to Alpha"}</div>
-    </div>
-    <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:12}}>DAILY BREAKDOWN</div>
-    <div style={{display:"flex",gap:8,marginBottom:20}}>
-      {dailyTotals.map(({day,total})=>{const dp=Math.min((total/DAILY_GOAL)*100,100);const dc=total>=DAILY_GOAL?"#22c55e":total>0?"#eab308":"#1e293b";return<div key={day} style={{flex:1,background:"#0a0f1a",border:"1.5px solid "+dc+"44",borderRadius:14,padding:"14px 8px",textAlign:"center"}}><div style={{fontSize:11,color:"#475569",fontWeight:700,marginBottom:8}}>{day}</div><div style={{fontSize:16,fontWeight:800,color:dc}}>{total>0?fmtS(total):"—"}</div><div style={{background:"#0f172a",borderRadius:99,height:4,overflow:"hidden",margin:"8px 0 6px"}}><div style={{height:"100%",width:dp+"%",background:dc,borderRadius:99}}/></div><div style={{fontSize:10,color:"#334155",fontWeight:600}}>/${DAILY_GOAL}</div></div>;})}
-    </div>
-    <div style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:18,padding:"18px 20px",marginBottom:20}}>
-      <div style={{fontSize:11,color:"#334155",letterSpacing:3,fontWeight:700,marginBottom:16}}>PAY CYCLE</div>
-      {[{w:"Week 1 (Sun–Sat)",a:"SELL",c:"#22c55e"},{w:"Week 2 (Sun–Sat)",a:"ACTIVATE",c:"#eab308"},{w:"Following Friday",a:"GET PAID",c:"#60a5fa"}].map((r,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:14,marginBottom:i<2?14:0}}><div style={{width:10,height:10,borderRadius:"50%",background:r.c,flexShrink:0}}/><div style={{flex:1,fontSize:14,color:"#94a3b8"}}>{r.w}</div><div style={{fontSize:13,fontWeight:800,color:r.c}}>{r.a}</div></div>)}
-    </div>
-    <div style={{background:"#0a0f1a",border:"1px solid rgba(124,58,237,0.3)",borderRadius:16,padding:"16px 18px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-      <div><div style={{fontSize:15,fontWeight:700,color:showMayBonus?"#a78bfa":"#475569"}}>May New Line Bonus</div><div style={{fontSize:12,color:"#334155",marginTop:3}}>+$35 per new line · rest of May</div></div>
-      <button onClick={()=>setShowMayBonus(!showMayBonus)} style={{background:showMayBonus?"#7c3aed":"#1e293b",border:"none",borderRadius:22,padding:"10px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",minWidth:64}}>{showMayBonus?"ON":"OFF"}</button>
-    </div>
-    <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:12}}>BUILD A SALE</div>
-    <div style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:20,padding:"20px",marginBottom:20}}>
-      <div style={{fontSize:11,color:"#475569",fontWeight:700,letterSpacing:2,marginBottom:8}}>DAY</div>
-      <div style={{display:"flex",gap:6,marginBottom:18}}>{WORK_DAYS.map(d=><button key={d} onClick={()=>setSelDay(d)} style={{flex:1,padding:"10px 4px",border:"2px solid "+(selDay===d?"#7c3aed":"#1e293b"),borderRadius:12,background:selDay===d?"#7c3aed22":"#080c14",color:selDay===d?"#a78bfa":"#475569",fontSize:13,fontWeight:700,cursor:"pointer"}}>{d}</button>)}</div>
-      <div style={{display:"flex",background:"#080c14",borderRadius:14,padding:4,gap:4,marginBottom:18}}>
-        {[{v:"line",l:"📱 New Line"},{v:"other",l:"➕ Other"}].map(t=><button key={t.v} onClick={()=>setAddingType(t.v)} style={{flex:1,padding:"12px",border:"none",borderRadius:11,background:addingType===t.v?"#1e293b":"transparent",color:addingType===t.v?"#f8fafc":"#475569",fontSize:13,fontWeight:700,cursor:"pointer"}}>{t.l}</button>)}
-      </div>
-      {addingType==="line"&&<div>
-        <div style={{fontSize:11,color:"#475569",fontWeight:700,letterSpacing:2,marginBottom:10}}>PLAN</div>
-        <div style={{display:"flex",gap:8,marginBottom:14}}>
-          {[{key:"none",label:"No Plan",add:0,color:"#64748b"},{key:"extra",label:"Extra",add:8,color:"#eab308"},{key:"premium",label:"Premium",add:11,color:"#22c55e"}].map(plan=><button key={plan.key} onClick={()=>setLinePlan(plan.key)} style={{flex:1,padding:"12px 6px",border:"2px solid "+(linePlan===plan.key?plan.color:"#1e293b"),borderRadius:14,background:linePlan===plan.key?plan.color+"18":"#080c14",color:linePlan===plan.key?plan.color:"#475569",cursor:"pointer",textAlign:"center"}}><div style={{fontSize:13,fontWeight:800}}>{plan.label}</div><div style={{fontSize:11,color:"#64748b",marginTop:3}}>+${plan.add}</div><div style={{fontSize:12,fontWeight:700,color:plan.color,marginTop:4}}>{fmt(50+plan.add+(lineNextUp?10:0)+(showMayBonus?35:0))}</div></button>)}
+          <div style={{marginBottom:16}}>
+            <span className="gothic" style={{fontSize:20,color:"#555",marginBottom:10,display:"block"}}>Quick Add</span>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:activeQuick?10:0}}>
+              {QUICK.map(q=>(
+                <button key={q.label} onClick={()=>setActiveQuick(activeQuick===q.label?null:q.label)} style={{padding:"9px 14px",background:activeQuick===q.label?CC[q.cat]+"33":"#000",border:"1.5px solid "+(activeQuick===q.label?CC[q.cat]:"#222"),borderRadius:12,color:activeQuick===q.label?CC[q.cat]:"#555",fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                  {q.icon} {q.label}
+                </button>
+              ))}
+            </div>
+            {activeQuick&&(
+              <div style={{display:"flex",gap:10,alignItems:"center",background:"#0a0a0a",border:"2px solid #222",borderRadius:14,padding:"12px 16px"}}>
+                <span style={{color:"#444",fontSize:15,fontWeight:700}}>$</span>
+                <input value={quickAmt} onChange={e=>setQuickAmt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addQuick()} type="number" placeholder="0.00" autoFocus style={{background:"transparent",border:"none",color:"#fff",fontSize:18,fontWeight:700,flex:1,outline:"none"}}/>
+                <button onClick={addQuick} style={{background:"#d4a017",border:"none",borderRadius:10,color:"#fff",padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:700}}>Add</button>
+                <button onClick={()=>{setActiveQuick(null);setQuickAmt("");}} style={{background:"#222",border:"none",borderRadius:10,color:"#444",padding:"8px 10px",cursor:"pointer",fontSize:13}}>✕</button>
+              </div>
+            )}
+          </div>
+          <div style={{display:"flex",gap:10,marginBottom:20}}>
+            {[
+              {id:"Sales",icon:"💰",val:fmtS(wkSales),sub:"of $"+WGOAL+" goal",pct:wkPct,color:wkColor,border:"#d4a017",bg:"#000",bar:"linear-gradient(90deg,#8b6914,"+wkColor+")"},
+              {id:"Car",icon:"🚗",val:fmt(carSaved),sub:(wksLeft||"?")+"w to goal",pct:carPct,color:"#00ff88",border:"rgba(0,255,136,0.4)",bg:"#000",bar:"linear-gradient(90deg,#00883a,#00ff88)"},
+              {id:"Debt",icon:"💳",val:fmt(totDebt-settledAmt),sub:settledCnt+"/"+DEBTS.length+" settled",pct:debtPct,color:"#ff2222",border:"rgba(255,34,34,0.4)",bg:"#000",bar:"linear-gradient(90deg,#ff2222,#00ff88)"},
+            ].map(c=>(
+              <div key={c.id} onClick={()=>setTab(c.id)} style={{flex:1,background:c.bg,border:"1px solid "+c.border,borderRadius:18,padding:"14px 12px",cursor:"pointer",position:"relative",overflow:"hidden"}}>
+                <div style={{position:"absolute",top:-15,right:-15,width:55,height:55,background:"radial-gradient(circle,rgba(212,160,23,0.08) 0%,transparent 70%)",borderRadius:"50%"}}/>
+                <div style={{fontSize:16,marginBottom:5}}>{c.icon}</div>
+                <div style={{fontSize:17,fontWeight:800,color:c.color,letterSpacing:-0.5}}>{c.val}</div>
+                <div style={{fontSize:9,color:"#555",marginTop:3,fontWeight:600}}>{c.sub}</div>
+                <div className="ptrack" style={{marginTop:8}}><div className="pfill" style={{width:Math.min(c.pct,100)+"%",background:c.bar}}/></div>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{textAlign:"center",marginBottom:16}}>
+            <span className="gothic" style={{fontSize:20,color:"#555",display:"block",textAlign:"center",marginBottom:14}}>Spending Overview</span>
+            {paycheck>0?(
+              <>
+                <DonutChart inner={innerRing.length?innerRing:[{v:1,c:"#222"}]} outer={outerRing.length?outerRing:[{v:1,c:"#222"}]} label={remaining>=0?fmtS(remaining):"-"+fmtS(Math.abs(remaining))} sub={Math.round(pct)+"% used"}/>
+                <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#444"}}><div style={{width:8,height:8,borderRadius:"50%",background:"#ffffff88"}}/>Spent</div>
+                  <div style={{display:"flex",alignItems:"center",gap:5,fontSize:10,color:"#444"}}><div style={{width:8,height:8,borderRadius:"50%",background:"#ffffff33"}}/>Obligations</div>
+                </div>
+              </>
+            ):(
+              <div style={{padding:"30px 0",color:"#333"}}><div style={{fontSize:32,marginBottom:10}}>💵</div><div style={{fontSize:14}}>Set your paycheck above to see chart</div></div>
+            )}
+          </div>
+          {CATS.filter(c=>catSpent[c]>0||catObl[c]>0).length>0&&(
+            <div style={{marginBottom:16}}>
+              <span className="gothic" style={{fontSize:20,color:"#555",marginBottom:12,display:"block"}}>Categories</span>
+              {CATS.filter(c=>catSpent[c]>0||catObl[c]>0).map(cat=>(
+                <div key={cat} style={{background:"#0a0a0a",border:"1px solid "+CC[cat]+"22",borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:CC[cat],flexShrink:0}}/>
+                  <span style={{fontSize:15}}>{CI[cat]}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{cat}</div>
+                    <div className="ptrack" style={{marginTop:5}}><div className="pfill" style={{width:(catObl[cat]>0?Math.min((catSpent[cat]/catObl[cat])*100,100):100)+"%",background:CC[cat]}}/></div>
+                  </div>
+                  <div style={{textAlign:"right"}}><div style={{fontSize:13,fontWeight:700,color:CC[cat]}}>{fmt(catSpent[cat])}</div>{catObl[cat]>catSpent[cat]&&<div style={{fontSize:10,color:"#333"}}>of {fmt(catObl[cat])}</div>}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="card" style={{marginBottom:16}}>
+            <span className="gothic" style={{fontSize:20,color:"#555",marginBottom:8,display:"block"}}>Net Worth</span>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:800,color:"#00ff88"}}>{fmt(carSaved)}</div><div style={{fontSize:9,color:"#444",marginTop:3}}>SAVINGS</div></div>
+              <div style={{color:"#333",fontSize:18}}>−</div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:800,color:"#ff2222"}}>{fmt(totDebt-settledAmt)}</div><div style={{fontSize:9,color:"#444",marginTop:3}}>DEBT</div></div>
+              <div style={{color:"#333",fontSize:18}}>=</div>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:17,fontWeight:800,color:netWorth>=0?"#00ff88":"#ff2222"}}>{netWorth>=0?fmt(netWorth):"-"+fmt(Math.abs(netWorth))}</div>
+                <div style={{fontSize:9,color:"#444",marginTop:3}}>NET WORTH</div>
+                {netWorthChange!==null&&<div style={{fontSize:9,color:netWorthChange>=0?"#00ff88":"#ff2222",marginTop:2}}>{netWorthChange>=0?"▲":"-▲"}{fmt(Math.abs(netWorthChange))}</div>}
+              </div>
+            </div>
+            <div style={{background:"#0d0d0d",borderRadius:8,padding:"7px 12px",textAlign:"center",fontSize:11,color:netWorth>=0?"#00ff88":"#555"}}>{netWorth>=0?"Assets exceed debt — keep going":"Settle collections to improve · every $1 cleared counts"}</div>
+          </div>
+          {history.length>0&&(
+            <div style={{marginBottom:16}}>
+              <span className="gothic" style={{fontSize:20,color:"#555",marginBottom:12,display:"block"}}>Week History</span>
+              {history.slice().reverse().map((w,i)=>(
+                <div key={i} style={{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:14,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <div><div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{w.week} · {w.date}</div><div style={{fontSize:11,color:"#444",marginTop:2}}>Check {fmt(w.paycheck)} · Spent {fmt(w.spent)}</div></div>
+                  <div style={{textAlign:"right"}}><div style={{fontSize:13,fontWeight:700,color:"#00ff88"}}>+{fmt(w.sales)}</div><div style={{fontSize:9,color:"#444"}}>sales</div></div>
+                </div>
+              ))}
+              {history.length>=2&&(
+                <div style={{background:"#000",border:"1px solid #222",borderRadius:14,padding:"14px 16px"}}>
+                  <span className="lbl" style={{marginBottom:10}}>AVERAGES</span>
+                  <div style={{display:"flex",justifyContent:"space-between"}}>
+                    {[{v:fmt(history.reduce((s,w)=>s+w.paycheck,0)/history.length),l:"avg check",c:"#d4a017"},{v:fmt(history.reduce((s,w)=>s+w.spent,0)/history.length),l:"avg spent",c:"#ff2222"},{v:fmt(history.reduce((s,w)=>s+w.sales,0)/history.length),l:"avg sales",c:"#00ff88"}].map((x,i)=>(
+                      <div key={i} style={{textAlign:"center"}}><div style={{fontSize:14,fontWeight:800,color:x.c}}>{x.v}</div><div style={{fontSize:9,color:"#444",marginTop:3}}>{x.l}</div></div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#080c14",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
-          <div><div style={{fontSize:14,fontWeight:700,color:lineNextUp?"#22c55e":"#475569"}}>New Next Up</div><div style={{fontSize:11,color:"#334155",marginTop:3}}>Stacks on this line · +$10</div></div>
-          <button onClick={()=>setLineNextUp(!lineNextUp)} style={{background:lineNextUp?"#22c55e":"#1e293b",border:"none",borderRadius:22,padding:"10px 20px",color:lineNextUp?"#000":"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>{lineNextUp?"ON":"OFF"}</button>
-        </div>
-        <div style={{background:"#080c14",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
-          {[{label:"New Line",amount:50,color:"#e2e8f0"},...(linePlan!=="none"?[{label:linePlan==="premium"?"Premium Plan":"Extra Plan",amount:linePlan==="premium"?11:8,color:linePlan==="premium"?"#22c55e":"#eab308"}]:[]),...(lineNextUp?[{label:"Next Up",amount:10,color:"#22c55e"}]:[]),...(showMayBonus?[{label:"May Bonus",amount:35,color:"#a78bfa"}]:[])].map((row,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:13,color:"#64748b"}}>{row.label}</span><span style={{fontSize:13,fontWeight:700,color:row.color}}>+${row.amount}</span></div>)}
-          <div style={{borderTop:"1px solid #1e293b",marginTop:8,paddingTop:10,display:"flex",justifyContent:"space-between"}}><span style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>This line</span><span style={{fontSize:18,fontWeight:800,color:"#22c55e"}}>{fmt(lineTotal)}</span></div>
-        </div>
-        <button onClick={addLineToBuilder} style={{width:"100%",background:"linear-gradient(135deg,#4c1d95,#7c3aed)",border:"none",borderRadius:14,color:"#fff",padding:"15px",cursor:"pointer",fontSize:15,fontWeight:700}}>+ ADD LINE</button>
-      </div>}
-      {addingType==="other"&&<div style={{display:"flex",gap:10}}>
-        <select value={otherProduct} onChange={e=>setOtherProduct(e.target.value)} style={{...IS,flex:1}}>
-          {["TV","Internet","Wireless"].map(cat=><optgroup key={cat} label={"── "+cat+" ──"}>{PRODUCTS.filter(p=>p.category===cat).map(p=><option key={p.id} value={p.id}>{p.label} · {fmt(p.amount)}</option>)}</optgroup>)}
-        </select>
-        <button onClick={addOtherToBuilder} style={{background:"linear-gradient(135deg,#4c1d95,#7c3aed)",border:"none",borderRadius:14,color:"#fff",padding:"0 20px",cursor:"pointer",fontSize:24,flexShrink:0}}>+</button>
-      </div>}
-      {builder.length>0&&<div style={{background:"#080c14",borderRadius:16,padding:"16px",marginTop:16}}>
-        <div style={{fontSize:11,color:"#475569",fontWeight:700,letterSpacing:2,marginBottom:12}}>CURRENT SALE</div>
-        {builder.map((item,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:8,height:8,borderRadius:"50%",background:item.type==="line"?"#7c3aed":"#3b82f6"}}/><span style={{fontSize:13,color:"#94a3b8"}}>{item.label}</span></div><div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:14,fontWeight:700,color:"#a78bfa"}}>+{fmt(item.amount)}</span><button onClick={()=>removeFromBuilder(i)} style={{background:"#1e293b",border:"none",borderRadius:7,color:"#475569",cursor:"pointer",fontSize:12,padding:"3px 8px"}}>✕</button></div></div>)}
-        <div style={{borderTop:"1px solid #1e293b",marginTop:10,paddingTop:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:14,color:"#64748b",fontWeight:600}}>SALE TOTAL</span><span style={{fontSize:24,fontWeight:900,color:"#22c55e"}}>{fmt(builderTotal)}</span></div>
-      </div>}
-      {builder.length>0&&<button onClick={commitSale} style={{width:"100%",background:"linear-gradient(135deg,#14532d,#16a34a)",border:"none",borderRadius:14,color:"#fff",padding:"16px",cursor:"pointer",fontSize:16,fontWeight:800,marginTop:12}}>✓ LOG SALE · {fmt(builderTotal)}</button>}
-    </div>
-    {sales.length>0&&<div>
-      <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:12}}>SALES LOG</div>
-      {sales.map(s=><div key={s.id} style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:18,padding:"16px 18px",marginBottom:10}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><div style={{fontSize:13,color:"#475569",fontWeight:700,background:"#1e293b",padding:"4px 10px",borderRadius:8}}>{s.day}</div><div style={{display:"flex",alignItems:"center",gap:12}}><span style={{fontSize:20,fontWeight:800,color:"#22c55e"}}>+{fmt(s.total)}</span><button onClick={()=>removeSale(s.id)} style={{background:"#1e293b",border:"none",borderRadius:8,color:"#475569",cursor:"pointer",fontSize:13,padding:"5px 10px"}}>✕</button></div></div>
-        {(s.items||[]).map((item,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",marginTop:6}}><span style={{fontSize:13,color:"#64748b"}}>{item.label}</span><span style={{fontSize:13,fontWeight:600,color:"#a78bfa"}}>+{fmt(item.amount)}</span></div>)}
-      </div>)}
-    </div>}
-  </div>}
+      )}
 
-  {tab==="Car"&&<div style={{padding:"0 20px"}}>
-    <div style={{background:"linear-gradient(145deg,#061a10,#041209)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:24,padding:"28px 24px",marginBottom:16,textAlign:"center",position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:-50,left:"50%",transform:"translateX(-50%)",width:200,height:200,background:"radial-gradient(circle,rgba(34,197,94,0.15) 0%,transparent 60%)",borderRadius:"50%"}}/>
-      <div style={{fontSize:12,letterSpacing:4,color:"#16a34a",fontWeight:700,textTransform:"uppercase",marginBottom:12}}>CAR FUND</div>
-      <div style={{fontSize:56,fontWeight:900,color:"#22c55e",letterSpacing:-2,lineHeight:1}}>{fmt(carSaved)}</div>
-      <div style={{fontSize:14,color:"#334155",marginTop:10,fontWeight:600}}>saved toward your car</div>
-      <div style={{background:"#041209",borderRadius:99,height:10,overflow:"hidden",margin:"20px 0 10px"}}><div style={{height:"100%",width:carPct+"%",background:"linear-gradient(90deg,#16a34a,#4ade80)",borderRadius:99}}/></div>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700}}><span style={{color:"#16a34a"}}>{Math.round(carPct)}% complete</span><span style={{color:"#334155"}}>Goal: {fmt(carTarget)}</span></div>
-    </div>
-    <div style={{display:"flex",gap:12,marginBottom:12}}>
-      <div style={{flex:1,background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:18,padding:"18px",textAlign:"center"}}><div style={{fontSize:36,fontWeight:900,color:"#f8fafc",letterSpacing:-1}}>{weeksLeft||"—"}</div><div style={{fontSize:11,color:"#475569",fontWeight:700,marginTop:6,letterSpacing:2}}>WEEKS LEFT</div></div>
-      <div style={{flex:1,background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:18,padding:"18px",textAlign:"center"}}><div style={{fontSize:18,fontWeight:800,color:"#4ade80",letterSpacing:-0.5}}>{targetDate||"—"}</div><div style={{fontSize:11,color:"#475569",fontWeight:700,marginTop:6,letterSpacing:2}}>TARGET DATE</div></div>
-    </div>
-    <div style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:18,padding:"18px",marginBottom:16,textAlign:"center"}}><div style={{fontSize:32,fontWeight:900,color:"#f87171",letterSpacing:-1}}>{fmt(carGap)}</div><div style={{fontSize:11,color:"#475569",fontWeight:700,marginTop:6,letterSpacing:2}}>REMAINING TO GOAL</div></div>
-    <div style={{background:"linear-gradient(145deg,#0d1b35,#0f2448)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:18,padding:"18px 20px",marginBottom:16}}>
-      <div style={{fontSize:11,color:"#60a5fa",fontWeight:700,letterSpacing:2,marginBottom:12}}>🔮 WHAT IF I SAVE MORE?</div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><span style={{fontSize:13,color:"#94a3b8"}}>Weekly savings</span><span style={{fontSize:18,fontWeight:800,color:"#60a5fa"}}>{fmt(carWhatIf)}/wk</span></div>
-      <input type="range" min={100} max={1000} step={50} value={carWhatIf} onChange={e=>setCarWhatIf(Number(e.target.value))} style={{width:"100%",accentColor:"#3b82f6",marginBottom:12}}/>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span style={{color:"#475569"}}>At {fmt(carWhatIf)}/wk:</span><span style={{color:"#4ade80",fontWeight:700}}>{whatIfWeeks} weeks · {whatIfWeeks?new Date(Date.now()+whatIfWeeks*7*86400000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—"}</span></div>
-      {carWhatIf>weeklyCarSavings&&weeksLeft&&whatIfWeeks&&<div style={{fontSize:11,color:"#22c55e",marginTop:8,textAlign:"center"}}>{weeksLeft-whatIfWeeks>0?(weeksLeft-whatIfWeeks)+" weeks faster 🚀":"Already at max pace"}</div>}
-    </div>
-    <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:14}}>ADJUST</div>
-    {[{f:"saved",l:"Current Savings",v:carSaved},{f:"target",l:"Car Goal",v:carTarget},{f:"weekly",l:"Weekly Transfer",v:weeklyCarSavings}].map(({f,l,v})=>(
-      <div key={f} style={{background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:16,padding:"18px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-        <div style={{fontSize:14,color:"#64748b",fontWeight:600}}>{l}</div>
-				        {editingCar===f?<div style={{display:"flex",alignItems:"center",gap:8}}><span style={{color:"#22c55e",fontSize:18,fontWeight:700}}>$</span><input value={carInput} onChange={e=>setCarInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&confirmCarEdit(f)} autoFocus style={{background:"transparent",border:"none",borderBottom:"2px solid #22c55e",color:"#f8fafc",fontSize:20,fontWeight:800,width:100,outline:"none"}}/><button onClick={()=>confirmCarEdit(f)} style={{background:"#22c55e",border:"none",borderRadius:10,color:"#000",padding:"8px 14px",cursor:"pointer",fontSize:13,fontWeight:700}}>SET</button></div>:<div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18,fontWeight:800,color:"#22c55e"}}>{fmt(v)}</span><button onClick={()=>{setEditingCar(f);setCarInput(String(v));}} style={{background:"#1e293b",border:"none",borderRadius:8,color:"#475569",cursor:"pointer",fontSize:12,padding:"5px 10px"}}>edit</button></div>}
-      </div>
-    ))}
-    <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:14,marginTop:8}}>MILESTONES</div>
-    {[3000,4000,5000,6000,7000].map(m=>{const hit=carSaved>=m;const w=weeklyCarSavings>0?Math.ceil(Math.max(m-carSaved,0)/weeklyCarSavings):null;return<div key={m} style={{display:"flex",alignItems:"center",gap:16,marginBottom:14}}><div style={{width:26,height:26,borderRadius:"50%",background:hit?"#22c55e":"#0a0f1a",border:"2px solid "+(hit?"#22c55e":"#1e293b"),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{hit&&<span style={{fontSize:12,color:"#000",fontWeight:800}}>✓</span>}</div><div style={{flex:1,fontSize:15,fontWeight:600,color:hit?"#4ade80":"#64748b"}}>{fmt(m)}</div><div style={{fontSize:13,fontWeight:700,color:hit?"#22c55e":"#334155"}}>{hit?"reached ✓":w?w+"w away":"—"}</div></div>;})}
-  </div>}
+      {tab==="Bills"&&(
+        <div className="section" style={{paddingTop:24}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+            <div><div className="gothic" style={{fontSize:30,color:"#fff"}}>Bills & Expenses</div><div style={{fontSize:13,color:"#444",marginTop:4}}>Tap week to expand</div></div>
+            <button onClick={()=>setShowAddForm(!showAddForm)} style={{background:showAddForm?"#222":"#d4a017",border:"none",borderRadius:12,color:"#fff",padding:"10px 16px",cursor:"pointer",fontSize:13,fontWeight:700,flexShrink:0}}>{showAddForm?"Cancel":"+ Add"}</button>
+          </div>
+          {showAddForm&&(
+            <div className="card" style={{marginBottom:20}}>
+              <span className="lbl" style={{marginBottom:14}}>NEW ENTRY</span>
+              <input placeholder="Label (e.g. Netflix, Groceries)" value={fLabel} onChange={e=>setFLabel(e.target.value)} className="inp"/>
+              <div style={{position:"relative"}}><span style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",color:"#444",fontSize:15,fontWeight:700}}>$</span><input placeholder="0.00" value={fAmt} onChange={e=>setFAmt(e.target.value)} type="number" className="inp" style={{paddingLeft:34}}/></div>
+              <span className="lbl" style={{marginBottom:8}}>FREQUENCY</span>
+              <div style={{display:"flex",gap:8,marginBottom:10}}>
+                {Object.entries(FR).map(([k,l])=>(
+                  <button key={k} onClick={()=>setFFreq(k)} style={{flex:1,padding:"10px 4px",border:"2px solid "+(fFreq===k?"#d4a017":"#222"),borderRadius:12,background:fFreq===k?"#d4a01722":"#000",color:fFreq===k?"#d4a017":"#444",fontSize:10,fontWeight:700,cursor:"pointer"}}>{l}</button>
+                ))}
+              </div>
+              {fFreq!=="one-time"&&<input placeholder="Due day of month (e.g. 22)" value={fDue} onChange={e=>setFDue(e.target.value)} type="number" className="inp"/>}
+              <span className="lbl" style={{marginBottom:8}}>CATEGORY</span>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+                {CATS.map(c=><button key={c} onClick={()=>setFCat(c)} style={{padding:"8px 10px",border:"1.5px solid "+(fCat===c?CC[c]:"#222"),borderRadius:10,background:fCat===c?CC[c]+"33":"#000",color:fCat===c?CC[c]:"#444",fontSize:11,fontWeight:600,cursor:"pointer"}}>{CI[c]} {c}</button>)}
+              </div>
+              <button onClick={addEntry} className={fFreq!=="one-time"?"btn-green":"btn-blue"}>{fFreq!=="one-time"?"✓ ADD TO BILLS":"ADD EXPENSE"}</button>
+            </div>
+          )}
+          {bills.length===0&&expenses.length===0&&!showAddForm&&(
+            <div style={{textAlign:"center",color:"#222",fontSize:14,padding:"50px 0"}}>
+              <div style={{fontSize:40,marginBottom:12}}>📅</div>
+              <div style={{marginBottom:8}}>Nothing added yet</div>
+              <div style={{fontSize:12}}>Tap + Add to log a bill or expense</div>
+            </div>
+          )}
+          {bills.length>0&&(
+            <div style={{marginBottom:8}}>
+              <div style={{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:14,padding:"12px 16px",marginBottom:16,display:"flex",justifyContent:"space-between"}}>
+                <div><span className="lbl" style={{marginBottom:3}}>TOTAL BILLS</span><div style={{fontSize:20,fontWeight:800,color:"#ff2222"}}>{fmt(bills.reduce((s,b)=>s+b.amount,0))}</div></div>
+                <div style={{textAlign:"right"}}><span className="lbl" style={{marginBottom:3}}>PAID</span><div style={{fontSize:20,fontWeight:800,color:"#00ff88"}}>{fmt(paidBills)}</div></div>
+              </div>
+              {billGroups.map(([gk,gb])=>{
+                const isOpen=!!openG[gk],gt=gb.reduce((s,b)=>s+b.amount,0),gpt=gb.filter(b=>b.paid).reduce((s,b)=>s+b.amount,0),gpct=gt>0?(gpt/gt*100):0,spct=gt>0?Math.min((wkSales/gt)*100,100):0,sc2=wkSales>=gt?"#00ff88":wkSales>=gt*0.7?"#ffcc00":"#ff2222";
+                return(
+                  <div key={gk}>
+                    <button onClick={()=>toggleG(gk)} style={{width:"100%",textAlign:"left",cursor:"pointer",background:"#000",border:"1.5px solid "+(isOpen?"#d4a017":"#222"),borderRadius:isOpen?"18px 18px 0 0":18,padding:"16px 18px",marginBottom:isOpen?0:8}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18}}>📅</span><div><div style={{fontSize:9,color:"#444",fontWeight:700,letterSpacing:2,marginBottom:2}}>PAYCHECK WEEK</div><div style={{fontSize:17,fontWeight:800,color:"#d4a017"}}>{gk}</div></div></div>
+                        <div style={{display:"flex",alignItems:"center",gap:12}}>
+                          <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"#444",fontWeight:700,letterSpacing:2,marginBottom:2}}>DUE</div><div style={{fontSize:17,fontWeight:800,color:gpt>=gt?"#00ff88":"#ff2222"}}>{fmt(gt)}</div></div>
+                          <span style={{fontSize:16,color:"#444",transform:isOpen?"rotate(180deg)":"rotate(0deg)",display:"inline-block",transition:"transform 0.2s"}}>▾</span>
+                        </div>
+                      </div>
+                      <div style={{marginTop:10}}>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#333",fontWeight:600,marginBottom:3}}><span>Bills paid</span><span>{fmt(gpt)} / {fmt(gt)}</span></div>
+                        <div className="ptrack"><div className="pfill" style={{width:gpct+"%",background:"linear-gradient(90deg,#00883a,#00ff88)"}}/></div>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#333",fontWeight:600,marginBottom:3,marginTop:6}}><span>Sales earned</span><span style={{color:sc2}}>{fmt(wkSales)} / {fmt(gt)} needed</span></div>
+                        <div className="ptrack"><div className="pfill" style={{width:spct+"%",background:"linear-gradient(90deg,#8b6914,"+sc2+")"}}/></div>
+                      </div>
+                    </button>
+                    {isOpen&&(
+                      <div style={{background:"#0d0d0d",border:"1px solid #1a1a1a",borderTop:"none",borderRadius:"0 0 18px 18px",padding:"10px 12px 12px",marginBottom:8}}>
+                        {gb.map(b=>{
+                          const du=daysUntil(b.dueDay);const uc=urgColor(du);const dl=du===0?"TODAY":du<999?du+"d":"";
+                          return(
+                            <div key={b.id} style={{background:b.paid?"#000":"#0a0a0a",border:"1.5px solid "+(b.paid?"#00ff88":CC[b.category]+"33"),borderRadius:14,padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                              <button onClick={()=>toggleBill(b.id)} style={{display:"flex",alignItems:"center",gap:10,background:"none",border:"none",cursor:"pointer",textAlign:"left",flex:1,padding:0}}>
+                                <div style={{width:38,height:38,borderRadius:12,background:b.paid?"#00ff8818":CC[b.category]+"18",border:"2px solid "+(b.paid?"#00ff8844":CC[b.category]+"44"),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:18}}>{b.paid?"✓":CI[b.category]}</div>
+                                <div>
+                                  <div style={{fontSize:14,fontWeight:700,color:b.paid?"#00ff88":"#fff",textDecoration:b.paid?"line-through":"none"}}>{b.label}</div>
+                                  <div style={{fontSize:10,color:"#444",marginTop:1}}>{FR[b.freq]}{b.dueDay>0?" · due "+b.dueDay+"th":""}</div>
+                                  {!b.paid&&dl&&<div style={{marginTop:4}}><span style={{fontSize:9,fontWeight:700,color:uc,background:uc+"18",border:"1px solid "+uc+"44",borderRadius:6,padding:"2px 6px"}}>{dl}</span></div>}
+                                </div>
+                              </button>
+                              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                <span style={{fontSize:15,fontWeight:700,color:b.paid?"#00ff88":"#ff2222",textDecoration:b.paid?"line-through":"none"}}>{fmt(b.amount)}</span>
+                                <button onClick={()=>{setEditingBill(b.id);setEditBillData({label:b.label,amount:b.amount,dueDay:b.dueDay});}} style={{background:"#222",border:"none",borderRadius:7,color:"#d4a017",cursor:"pointer",fontSize:11,padding:"3px 7px"}}>✎</button>
+                                <button onClick={()=>setConfirmDel({type:"bill",id:b.id})} style={{background:"#222",border:"none",borderRadius:7,color:"#444",cursor:"pointer",fontSize:11,padding:"3px 7px"}}>✕</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div style={{display:"flex",justifyContent:"space-between",padding:"8px 4px 0",borderTop:"1px solid #222"}}><span style={{fontSize:11,color:"#444",fontWeight:700}}>TOTAL</span><span style={{fontSize:15,fontWeight:800,color:"#ff2222"}}>{fmt(gt)}</span></div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {expenses.length>0&&(
+            <div style={{marginTop:8}}>
+              <span className="lbl" style={{marginBottom:12}}>THIS WEEK'S EXPENSES</span>
+              {expenses.slice().reverse().map(e=>(
+                <div key={e.id} style={{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:36,height:36,borderRadius:11,background:CC[e.category]+"18",border:"2px solid "+CC[e.category]+"44",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{CI[e.category]}</div>
+                    <div><div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{e.label}</div><div style={{fontSize:10,color:"#444",marginTop:1}}>{e.category}</div></div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:15,fontWeight:700,color:"#ff2222"}}>{fmt(e.amount)}</span>
+                    <button onClick={()=>setConfirmDel({type:"exp",id:e.id})} style={{background:"#222",border:"none",borderRadius:7,color:"#444",cursor:"pointer",fontSize:11,padding:"3px 7px"}}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-  {tab==="Debt"&&<div style={{padding:"0 20px"}}>
-    <div style={{fontSize:11,letterSpacing:3,color:"#334155",fontWeight:700,textTransform:"uppercase",marginBottom:6}}>COLLECTIONS TRACKER</div>
-    <div style={{fontSize:13,color:"#475569",marginBottom:20}}>Smallest first · negotiate settlements</div>
-    <div style={{background:"linear-gradient(145deg,#0d1b35,#0f2448)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:18,padding:"18px 20px",marginBottom:16}}>
-      <div style={{fontSize:11,color:"#60a5fa",fontWeight:700,letterSpacing:2,marginBottom:12}}>📊 CREDIT SCORE ESTIMATOR</div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div><div style={{fontSize:13,color:"#94a3b8"}}>Starting score</div><div style={{fontSize:28,fontWeight:900,color:"#f87171"}}>489</div></div><div style={{fontSize:24,color:"#334155"}}>→</div><div style={{textAlign:"right"}}><div style={{fontSize:13,color:"#94a3b8"}}>Est. after settlements</div><div style={{fontSize:28,fontWeight:900,color:es
-```
+      {tab==="Sales"&&(
+        <div className="section" style={{paddingTop:24}}>
+          <div style={{background:"#000",border:"2px solid #d4a017",borderRadius:24,padding:"24px",marginBottom:14,textAlign:"center",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:-40,left:"50%",transform:"translateX(-50%)",width:180,height:180,background:"radial-gradient(circle,rgba(212,160,23,0.1) 0%,transparent 60%)",borderRadius:"50%"}}/>
+            <span className="gothic" style={{fontSize:20,color:"#d4a017",letterSpacing:2,marginBottom:8,display:"block"}}>This Week</span>
+            <div style={{fontSize:60,fontWeight:900,color:wkColor,letterSpacing:-3,lineHeight:1}}>{fmtS(wkSales)}</div>
+            <div style={{fontSize:13,color:"#555",marginTop:8,fontWeight:600}}>goal ${WGOAL} · min ${WMIN} · pip ${WPIP}</div>
+            <div className="ptrack" style={{margin:"14px 0 8px",height:8}}><div className="pfill" style={{width:wkPct+"%",background:"linear-gradient(90deg,#8b6914,"+wkColor+")"}}/></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:10,fontWeight:700}}><span style={{color:"#ff2222"}}>PIP ${WPIP}</span><span style={{color:"#ffcc00"}}>MIN ${WMIN}</span><span style={{color:"#00ff88"}}>ALPHA ${WGOAL}</span></div>
+          </div>
+          {wkSales<WGOAL&&(
+            <div style={{background:"#000",border:"2px solid rgba(212,160,23,0.4)",borderRadius:14,padding:"12px 16px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div><div className="gothic" style={{fontSize:16,color:"#d4a017"}}>⚡ Pace Needed</div><div style={{fontSize:11,color:"#444",marginTop:2}}>{daysRemaining} day{daysRemaining!==1?"s":""} left this week</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:20,fontWeight:900,color:paceNeeded<=DGOAL?"#00ff88":"#ffcc00"}}>{fmtS(paceNeeded)}</div><div style={{fontSize:9,color:"#555",marginTop:2}}>per day to Alpha</div></div>
+            </div>
+          )}
+          <div style={{display:"flex",gap:10,marginBottom:14}}>
+            {[{v:fmt(monthlySales+wkSales),l:"MONTH TOTAL",c:"#d4a017"},{v:rejRate+"%",l:"REJECT RATE",c:rejRate<25?"#00ff88":"#ff2222"},{v:fmt(wkSales),l:"PROJECTED",c:"#00ff88"}].map((x,i)=>(
+              <div key={i} style={{flex:1,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:14,padding:"12px",textAlign:"center"}}>
+                <div style={{fontSize:15,fontWeight:800,color:x.c}}>{x.v}</div>
+                <div style={{fontSize:9,color:"#555",marginTop:3,fontWeight:600}}>{x.l}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:14,padding:"12px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div><div style={{fontSize:13,fontWeight:700,color:"#fff"}}>Log a Rejection</div><div style={{fontSize:11,color:"#444",marginTop:2}}>Need below 25% · {sales.rejects}/{sales.attempts} so far</div></div>
+            <button onClick={()=>setSales(s=>({...s,rejects:s.rejects+1,attempts:s.attempts+1}))} style={{background:"#222",border:"none",borderRadius:10,color:"#ff2222",padding:"10px 14px",cursor:"pointer",fontSize:13,fontWeight:700}}>+ Reject</button>
+          </div>
+          <div style={{background:"#000",border:"1.5px solid "+wkColor+"44",borderRadius:16,padding:"12px 16px",marginBottom:20,textAlign:"center"}}>
+            <div style={{fontSize:14,fontWeight:700,color:wkColor}}>{wkSales>=WGOAL?"✅ ALPHA — Leader Binder pace":wkSales>=WMIN?"⚠️ ON TRACK — push for Alpha":"🔴 BELOW MIN — lock in"}</div>
+            <div style={{fontSize:11,color:"#555",marginTop:3}}>{wkSales>=WGOAL?fmt(wkSales-WGOAL)+" above Alpha":fmt(WGOAL-wkSales)+" to Alpha"}</div>
+          </div>
+          <span className="gothic" style={{fontSize:20,color:"#555",marginBottom:12,display:"block"}}>Daily Breakdown</span>
+          <div style={{display:"flex",gap:8,marginBottom:20}}>
+            {dayTots.map(({day,total})=>{const dp=Math.min((total/DGOAL)*100,100),dc=total>=DGOAL?"#00ff88":total>0?"#ffcc00":"#222";return(
+              <div key={day} style={{flex:1,background:"#0a0a0a",border:"1.5px solid "+dc+"44",borderRadius:14,padding:"12px 6px",textAlign:"center"}}>
+                <div style={{fontSize:10,color:"#444",fontWeight:700,marginBottom:6}}>{day}</div>
+                <div style={{fontSize:14,fontWeight:800,color:dc}}>{total>0?fmtS(total):"—"}</div>
+                <div className="ptrack" style={{margin:"6px 0 4px"}}><div className="pfill" style={{width:dp+"%",background:dc}}/></div>
+                <div style={{fontSize:9,color:"#333",fontWeight:600}}>/${DGOAL}</div>
+              </div>
+            );})}
+          </div>
+          <div className="card" style={{marginBottom:20}}>
+            <span className="lbl" style={{marginBottom:14}}>PAY CYCLE</span>
+            {[{w:"Week 1 (Sun–Sat)",a:"SELL",c:"#00ff88"},{w:"Week 2 (Sun–Sat)",a:"ACTIVATE",c:"#d4a017"},{w:"Following Friday",a:"GET PAID",c:"#d4a017"}].map((r,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:i<2?12:0}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:r.c,flexShrink:0}}/>
+                <div style={{flex:1,fontSize:13,color:"#666"}}>{r.w}</div>
+                <div style={{fontSize:12,fontWeight:800,color:r.c}}>{r.a}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{background:"#0a0a0a",border:"2px solid rgba(212,160,23,0.4)",borderRadius:16,padding:"14px 16px",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div><div style={{fontSize:14,fontWeight:700,color:mayBonus?"#d4a017":"#444"}}>May New Line Bonus</div><div style={{fontSize:11,color:"#333",marginTop:2}}>+$35 per new line</div></div>
+            <button onClick={()=>setMayBonus(!mayBonus)} style={{background:mayBonus?"#d4a017":"#111",border:"none",borderRadius:22,padding:"9px 18px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",minWidth:56}}>{mayBonus?"ON":"OFF"}</button>
+          </div>
+          <span className="gothic" style={{fontSize:20,color:"#555",marginBottom:12,display:"block"}}>Build a Sale</span>
+          <div className="card" style={{marginBottom:20}}>
+            <span className="lbl" style={{marginBottom:8}}>DAY</span>
+            <div style={{display:"flex",gap:6,marginBottom:16}}>
+              {WDAYS.map(d=><button key={d} onClick={()=>setSelDay(d)} style={{flex:1,padding:"9px 4px",border:"2px solid "+(selDay===d?"#d4a017":"#222"),borderRadius:12,background:selDay===d?"#d4a01722":"#000",color:selDay===d?"#d4a017":"#444",fontSize:12,fontWeight:700,cursor:"pointer"}}>{d}</button>)}
+            </div>
+            <div style={{display:"flex",background:"#0d0d0d",borderRadius:14,padding:4,gap:4,marginBottom:16}}>
+              {[{v:"line",l:"📱 New Line"},{v:"other",l:"➕ Other"}].map(t=><button key={t.v} onClick={()=>setAddType(t.v)} style={{flex:1,padding:"11px",border:"none",borderRadius:11,background:addType===t.v?"#1a1a1a":"transparent",color:addType===t.v?"#fff":"#444",fontSize:12,fontWeight:700,cursor:"pointer"}}>{t.l}</button>)}
+            </div>
+            {addType==="line"&&(
+              <div>
+                <span className="lbl" style={{marginBottom:8}}>PLAN</span>
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  {[{key:"none",label:"No Plan",add:0,color:"#555"},{key:"extra",label:"Extra",add:8,color:"#ffcc00"},{key:"premium",label:"Premium",add:11,color:"#00ff88"}].map(p=>(
+                    <button key={p.key} onClick={()=>setPlan(p.key)} style={{flex:1,padding:"10px 4px",border:"2px solid "+(plan===p.key?p.color:"#222"),borderRadius:12,background:plan===p.key?p.color+"22":"#000",color:plan===p.key?p.color:"#444",cursor:"pointer",textAlign:"center"}}>
+                      <div style={{fontSize:12,fontWeight:800}}>{p.label}</div>
+                      <div style={{fontSize:10,color:"#555",marginTop:2}}>+${p.add}</div>
+                      <div style={{fontSize:11,fontWeight:700,color:p.color,marginTop:3}}>{fmt(50+p.add+(nextUp?10:0)+(mayBonus?35:0))}</div>
+                    </button>
+                  ))}
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0d0d0d",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
+                  <div><div style={{fontSize:13,fontWeight:700,color:nextUp?"#00ff88":"#444"}}>New Next Up</div><div style={{fontSize:10,color:"#333",marginTop:2}}>+$10</div></div>
+                  <button onClick={()=>setNextUp(!nextUp)} style={{background:nextUp?"#00ff88":"#111",border:"none",borderRadius:20,padding:"9px 16px",color:nextUp?"#000":"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>{nextUp?"ON":"OFF"}</button>
+                </div>
+                <div style={{background:"#0d0d0d",borderRadius:14,padding:"12px 14px",marginBottom:12}}>
+                  {[{l:"New Line",a:50,c:"#e2e8f0"},...(plan!=="none"?[{l:plan==="premium"?"Premium Plan":"Extra Plan",a:plan==="premium"?11:8,c:plan==="premium"?"#00ff88":"#ffcc00"}]:[]),...(nextUp?[{l:"Next Up",a:10,c:"#00ff88"}]:[]),...(mayBonus?[{l:"May Bonus",a:35,c:"#d4a017"}]:[])].map((r,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:12,color:"#555"}}>{r.l}</span><span style={{fontSize:12,fontWeight:700,color:r.c}}>+${r.a}</span></div>
+                  ))}
+                  <div style={{borderTop:"1px solid #222",marginTop:6,paddingTop:10,display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,fontWeight:700,color:"#fff"}}>This line</span><span style={{fontSize:17,fontWeight:800,color:"#00ff88"}}>{fmt(lineAmt)}</span></div>
+                </div>
+                <button onClick={addLine} className="btn-purple">+ ADD LINE</button>
+              </div>
+            )}
+            {addType==="other"&&(
+              <div style={{display:"flex",gap:10}}>
+                <select value={otherProd} onChange={e=>setOtherProd(e.target.value)} className="inp" style={{flex:1,marginBottom:0}}>
+                  {["TV","Internet","Wireless"].map(cat=><optgroup key={cat} label={"── "+cat+" ──"}>{PRODS.filter(p=>p.cat===cat).map(p=><option key={p.id} value={p.id}>{p.label} · {fmt(p.amount)}</option>)}</optgroup>)}
+                </select>
+                <button onClick={addOther} style={{background:"#d4a017",border:"none",borderRadius:14,color:"#fff",padding:"0 18px",cursor:"pointer",fontSize:22,flexShrink:0}}>+</button>
+              </div>
+            )}
+            {builder.length>0&&(
+              <div style={{background:"#0d0d0d",borderRadius:14,padding:"14px",marginTop:14}}>
+                <span className="lbl" style={{marginBottom:10}}>CURRENT SALE</span>
+                {builder.map((item,i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:7,height:7,borderRadius:"50%",background:item.type==="line"?"#d4a017":"#00ff88"}}/><span style={{fontSize:12,color:"#666"}}>{item.label}</span></div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:13,fontWeight:700,color:"#d4a017"}}>+{fmt(item.amount)}</span><button onClick={()=>rmBuilder(i)} style={{background:"#222",border:"none",borderRadius:6,color:"#444",cursor:"pointer",fontSize:11,padding:"2px 7px"}}>✕</button></div>
+                  </div>
+                ))}
+                <div style={{borderTop:"1px solid #222",marginTop:8,paddingTop:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,color:"#555",fontWeight:600}}>TOTAL</span><span style={{fontSize:22,fontWeight:900,color:"#00ff88"}}>{fmt(bldTotal)}</span></div>
+              </div>
+            )}
+            {builder.length>0&&<button onClick={logSale} className="btn-green" style={{marginTop:12}}>✓ LOG SALE · {fmt(bldTotal)}</button>}
+          </div>
+          {sales.log.length>0&&(
+            <div>
+              <span className="gothic" style={{fontSize:20,color:"#555",marginBottom:12,display:"block"}}>Sales Log</span>
+              {sales.log.slice().reverse().map(s=>(
+                <div key={s.id} style={{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:18,padding:"14px 16px",marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{fontSize:12,color:"#444",fontWeight:700,background:"#111",padding:"3px 9px",borderRadius:7}}>{s.day}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:18,fontWeight:800,color:"#00ff88"}}>+{fmt(s.total)}</span><button onClick={()=>rmSale(s.id)} style={{background:"#222",border:"none",borderRadius:7,color:"#444",cursor:"pointer",fontSize:12,padding:"4px 9px"}}>✕</button></div>
+                  </div>
+                  {s.items.map((item,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",marginTop:5}}><span style={{fontSize:12,color:"#555"}}>{item.label}</span><span style={{fontSize:12,fontWeight:600,color:"#d4a017"}}>+{fmt(item.amount)}</span></div>)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab==="Car"&&(
+        <div className="section" style={{paddingTop:24}}>
+          <div style={{background:"#000",border:"2px solid #00ff88",borderRadius:24,padding:"24px",marginBottom:14,textAlign:"center",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:-40,left:"50%",transform:"translateX(-50%)",width:180,height:180,background:"radial-gradient(circle,rgba(0,255,136,0.08) 0%,transparent 60%)",borderRadius:"50%"}}/>
+            <span className="gothic" style={{fontSize:20,color:"#00ff88",letterSpacing:2,marginBottom:10,display:"block"}}>Car Fund</span>
+            <div style={{fontSize:52,fontWeight:900,color:"#00ff88",letterSpacing:-2,lineHeight:1}}>{fmt(carSaved)}</div>
+            <div className="ptrack" style={{margin:"16px 0 8px",height:8}}><div className="pfill" style={{width:carPct+"%",background:"linear-gradient(90deg,#00883a,#00ff88)"}}/></div>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,fontWeight:700}}><span style={{color:"#00ff88"}}>{Math.round(carPct)}%</span><span style={{color:"#333"}}>Goal: {fmt(carTarget)}</span></div>
+          </div>
+          <div style={{display:"flex",gap:12,marginBottom:12}}>
+            <div style={{flex:1,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:18,padding:"16px",textAlign:"center"}}><div style={{fontSize:30,fontWeight:900,color:"#fff",letterSpacing:-1}}>{wksLeft||"—"}</div><span className="lbl" style={{marginTop:5,marginBottom:0}}>WEEKS LEFT</span></div>
+            <div style={{flex:1,background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:18,padding:"16px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:800,color:"#00ff88"}}>{tgtDate||"—"}</div><span className="lbl" style={{marginTop:5,marginBottom:0}}>TARGET DATE</span></div>
+          </div>
+          <div className="card" style={{textAlign:"center",marginBottom:14}}><div style={{fontSize:26,fontWeight:900,color:"#ff2222",letterSpacing:-1}}>{fmt(carGap)}</div><span className="lbl" style={{marginTop:5,marginBottom:0}}>REMAINING TO GOAL</span></div>
+          <div style={{background:"#000",border:"2px solid rgba(212,160,23,0.4)",borderRadius:18,padding:"16px 18px",marginBottom:14}}>
+            <span className="lbl" style={{color:"#d4a017",marginBottom:10}}>WHAT IF I SAVE MORE?</span>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><span style={{fontSize:12,color:"#666"}}>Weekly savings</span><span style={{fontSize:16,fontWeight:800,color:"#d4a017"}}>{fmt(carWhatIf)}/wk</span></div>
+            <input type="range" min={100} max={1000} step={50} value={carWhatIf} onChange={e=>setCarWhatIf(Number(e.target.value))} style={{width:"100%",marginBottom:10}}/>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:11}}><span style={{color:"#444"}}>At {fmt(carWhatIf)}/wk:</span><span style={{color:"#00ff88",fontWeight:700}}>{wiWks} wks · {wiWks?new Date(Date.now()+wiWks*7*86400000).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—"}</span></div>
+            {carWhatIf>carWeekly&&wksLeft&&wiWks&&wksLeft-wiWks>0&&<div style={{fontSize:11,color:"#00ff88",marginTop:6,textAlign:"center"}}>{wksLeft-wiWks} weeks faster 🚀</div>}
+          </div>
+          <span className="gothic" style={{fontSize:20,color:"#555",marginBottom:12,display:"block"}}>Adjust</span>
+          {[{f:"saved",l:"Current Savings",v:carSaved},{f:"target",l:"Car Goal",v:carTarget},{f:"weekly",l:"Weekly Transfer",v:carWeekly}].map(({f,l,v})=>(
+            <div key={f} style={{background:"#0a0a0a",border:"1px solid #1a1a1a",borderRadius:16,padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{fontSize:13,color:"#555",fontWeight:600}}>{l}</div>
+              {editCar===f?(
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{color:"#00ff88",fontSize:16,fontWeight:700}}>$</span>
+                  <input value={carIn} onChange={e=>setCarIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveCarEdit(f)} autoFocus style={{background:"transparent",border:"none",borderBottom:"2px solid #00ff88",color:"#fff",fontSize:18,fontWeight:800,width:90,outline:"none"}}/>
+                  <button onClick={()=>saveCarEdit(f)} style={{background:"#00ff88",border:"none",borderRadius:9,color:"#000",padding:"7px 12px",cursor:"pointer",fontSize:12,fontWeight:700}}>SET</button>
+                </div>
+              ):(
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:16,fontWeight:800,color:"#00ff88"}}>{fmt(v)}</span>
+                  <button onClick={()=>{setEditCar(f);setCarIn(String(v));}} style={{background:"#222",border:"none",borderRadius:7,color:"#444",cursor:"pointer",fontSize:11,padding:"4px 9px"}}>edit</button>
+                </div>
+              )}
+            </div>
+          ))}
+          <span className="gothic" style={{fontSize:20,color:"#555",marginBottom:12,marginTop:8,display:"block"}}>Milestones</span>
+          {[3000,4000,5000,6000,7000].map(m=>{
+            const hit=carSaved>=m,w=carWeekly>0?Math.ceil(Math.max(m-carSaved,0)/carWeekly):null;
+            return(
+              <div key={m} style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
+                <div style={{width:24,height:24,borderRadius:"50%",background:hit?"#00ff88":"#0a0a0a",border:"2px solid "+(hit?"#00ff88":"#222"),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{hit&&<span style={{fontSize:11,color:"#000",fontWeight:800}}>✓</span>}</div>
+                <div style={{flex:1,fontSize:14,fontWeight:600,color:hit?"#00ff88":"#555"}}>{fmt(m)}</div>
+                <div style={{fontSize:12,fontWeight:700,color:hit?"#00ff88":"#333"}}>{hit?"reached ✓":w?w+"w away":"—"}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tab==="Debt"&&(
+        <div className="section" style={{paddingTop:24}}>
+          <div className="gothic" style={{fontSize:30,color:"#fff",marginBottom:4}}>Collections</div>
+          <div style={{fontSize:13,color:"#444",marginBottom:20}}>Smallest first · negotiate settlements</div>
+          <div style={{background:"#000",border:"2px solid rgba(212,160,23,0.4)",borderRadius:18,padding:"16px 18px",marginBottom:14}}>
+            <span className="gothic" style={{fontSize:17,color:"#d4a017",marginBottom:10,display:"block"}}>Credit Score Estimator</span>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div><div style={{fontSize:12,color:"#666"}}>Starting</div><div style={{fontSize:26,fontWeight:900,color:"#ff2222"}}>489</div></div>
+              <div style={{fontSize:20,color:"#333"}}>→</div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:12,color:"#666"}}>Est. after settlements</div><div style={{fontSize:26,fontWeight:900,color:estScore>=600?"#00ff88":estScore>=550?"#ffcc00":"#ff2222"}}>{estScore}</div></div>
+            </div>
+            <div className="ptrack" style={{marginBottom:6}}><div className="pfill" style={{width:Math.min(((estScore-300)/550)*100,100)+"%",background:"linear-gradient(90deg,#ff2222,#ffcc00,#00ff88)"}}/></div>
+            <div style={{fontSize:10,color:"#444",textAlign:"center"}}>+{scoreBoost} pts estimated · settle more to increase</div>
+          </div>
+          {nextDebt&&(
+            <div style={{background:"#000",border:"2px solid #00ff88",borderRadius:16,padding:"14px 16px",marginBottom:14}}>
+              <span className="gothic" style={{fontSize:17,color:"#00ff88",marginBottom:6,display:"block"}}>⚡ Next Move</span>
+              <div style={{fontSize:14,fontWeight:700,color:"#fff",marginBottom:3}}>Settle {nextDebt.label}</div>
+              <div style={{fontSize:12,color:"#444",marginBottom:6}}>{nextDebt.source} · {fmt(nextDebt.amount)}</div>
+              <div style={{fontSize:12,color:"#00ff88",fontWeight:700}}>Offer ~{fmt(Math.round(nextDebt.amount*nextDebt.s))} ({Math.round(nextDebt.s*100)}¢ on $)</div>
+            </div>
+          )}
+          <div style={{background:"#000",border:"2px solid #ff2222",borderRadius:20,padding:"18px 20px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div><span className="lbl" style={{color:"#ff2222",marginBottom:4}}>REMAINING</span><div style={{fontSize:28,fontWeight:900,color:"#ff2222",letterSpacing:-1}}>{fmt(totDebt-settledAmt)}</div></div>
+            <div style={{textAlign:"right"}}><span className="lbl" style={{marginBottom:4}}>CLEARED</span><div style={{fontSize:28,fontWeight:900,color:"#00ff88",letterSpacing:-1}}>{fmt(settledAmt)}</div></div>
+          </div>
+          <div className="ptrack" style={{marginBottom:20,height:6}}><div className="pfill" style={{width:debtPct+"%",background:"linear-gradient(90deg,#ff2222,#00ff88)"}}/></div>
+          {DEBTS.map(d=>{
+            const s=settled[d.id];
+            return(
+              <button key={d.id} onClick={()=>toggleDebt(d.id)} style={{width:"100%",background:s?"#000":"#0a0a0a",border:"1.5px solid "+(s?"#00ff88":d.color+"33"),borderRadius:18,padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",textAlign:"left",marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:24,height:24,borderRadius:"50%",background:s?"#00ff88":"transparent",border:"2.5px solid "+(s?"#00ff88":d.color),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{s&&<span style={{fontSize:11,color:"#000",fontWeight:800}}>✓</span>}</div>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:s?"#00ff88":"#fff",textDecoration:s?"line-through":"none"}}>{d.label}</div>
+                    <div style={{fontSize:11,color:"#444",marginTop:2}}>{d.source}</div>
+                    <div style={{fontSize:10,color:"#333",marginTop:1}}>~{fmt(Math.round(d.amount*d.s))} ({Math.round(d.s*100)}¢/$)</div>
+                  </div>
+                </div>
+                <div style={{fontSize:16,fontWeight:800,color:s?"#00ff88":"#ff2222",textDecoration:s?"line-through":"none"}}>{fmt(d.amount)}</div>
+              </button>
+            );
+          })}
+          <div className="card" style={{marginTop:8}}>
+            <div className="gothic" style={{fontSize:18,color:"#d4a017",marginBottom:10}}>⚠️ Settlement Rules</div>
+            {["Get written agreement BEFORE paying","Offer 40–55¢ on the dollar","Dispute errors at AnnualCreditReport.com","Top 3 cleared = +30–50 credit score pts"].map((r,i)=>(
+              <div key={i} style={{display:"flex",gap:10,marginBottom:8}}><span style={{color:"#d4a017",fontWeight:700,flexShrink:0}}>·</span><span style={{fontSize:13,color:"#555"}}>{r}</span></div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <nav className="nav">
+        {NAVS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} className={tab===t.id?"active":""}>
+            <span className="ni">{t.icon}</span>
+            <span className="nl gothic" style={{fontSize:11}}>{t.label}</span>
+            {tab===t.id&&<div className="dot"/>}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
+ReactDOM.render(React.createElement(App),document.getElementById("root"));
+</script>
+</body>
+</html>
